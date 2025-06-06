@@ -19,23 +19,23 @@
 package org.apache.struts2.views.jsp;
 
 import com.mockobjects.dynamic.Mock;
-import com.opensymphony.xwork2.Action;
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.ActionInvocation;
-import com.opensymphony.xwork2.ActionProxy;
-import com.opensymphony.xwork2.config.entities.ActionConfig;
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.PageContext;
+import org.apache.struts2.action.Action;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.ActionInvocation;
+import org.apache.struts2.ActionProxy;
 import org.apache.struts2.ServletActionContext;
 import org.apache.struts2.StrutsException;
 import org.apache.struts2.TestAction;
 import org.apache.struts2.TestActionTagResult;
 import org.apache.struts2.TestConfigurationProvider;
 import org.apache.struts2.components.ActionComponent;
+import org.apache.struts2.config.entities.ActionConfig;
 import org.apache.struts2.dispatcher.HttpParameters;
 import org.apache.struts2.dispatcher.mapper.ActionMapper;
 import org.apache.struts2.dispatcher.mapper.DefaultActionMapper;
 
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.PageContext;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -110,7 +110,7 @@ public class ActionTagTest extends AbstractTagTest {
     }
 
     public void testSimple() {
-        request.setupGetServletPath("/foo.action");
+        request.setServletPath("/foo.action");
 
         ActionConfig config = configuration.getRuntimeConfiguration().getActionConfig("", "testAction");
         container.inject(config.getInterceptors().get(0).getInterceptor());
@@ -150,7 +150,7 @@ public class ActionTagTest extends AbstractTagTest {
     }
 
     public void testSimple_clearTagStateSet() {
-        request.setupGetServletPath("/foo.action");
+        request.setServletPath("/foo.action");
 
         ActionConfig config = configuration.getRuntimeConfiguration().getActionConfig("", "testAction");
         container.inject(config.getInterceptors().get(0).getInterceptor());
@@ -199,7 +199,7 @@ public class ActionTagTest extends AbstractTagTest {
     }
 
     public void testSimpleWithActionMethodInOriginalURI() {
-        request.setupGetServletPath("/foo!foo.action");
+        request.setServletPath("/foo!foo.action");
 
         ActionConfig config = configuration.getRuntimeConfiguration().getActionConfig("", "testAction");
         container.inject(config.getInterceptors().get(0).getInterceptor());
@@ -239,7 +239,7 @@ public class ActionTagTest extends AbstractTagTest {
     }
 
     public void testSimpleWithctionMethodInOriginalURI_clearTagStateSet() {
-        request.setupGetServletPath("/foo!foo.action");
+        request.setServletPath("/foo!foo.action");
 
         ActionConfig config = configuration.getRuntimeConfiguration().getActionConfig("", "testAction");
         container.inject(config.getInterceptors().get(0).getInterceptor());
@@ -403,6 +403,7 @@ public class ActionTagTest extends AbstractTagTest {
 
     public void testExecuteButResetReturnSameInvocation() throws Exception {
         Mock mockActionInv = new Mock(ActionInvocation.class);
+        mockActionInv.matchAndReturn("invoke", "TEST");
         ActionTag tag = new ActionTag();
         tag.setPageContext(pageContext);
         tag.setNamespace("");
@@ -419,7 +420,7 @@ public class ActionTagTest extends AbstractTagTest {
         ActionComponent component = (ActionComponent) tag.getComponent();
 
         tag.doEndTag();
-        assertSame(oldInvocation, ActionContext.getContext().getActionInvocation());
+        assertEquals(oldInvocation.invoke(), ActionContext.getContext().getActionInvocation().invoke());
 
         // Basic sanity check of clearTagStateForTagPoolingServers() behaviour for Struts Tags after doEndTag().
         ActionTag freshTag = new ActionTag();
@@ -432,6 +433,7 @@ public class ActionTagTest extends AbstractTagTest {
 
     public void testExecuteButResetReturnSameInvocation_clearTagStateSet() throws Exception {
         Mock mockActionInv = new Mock(ActionInvocation.class);
+        mockActionInv.matchAndReturn("invoke", "TEST");
         ActionTag tag = new ActionTag();
         tag.setPerformClearTagStateForTagPoolingServers(true);  // Explicitly request tag state clearing.
         tag.setPageContext(pageContext);
@@ -450,7 +452,7 @@ public class ActionTagTest extends AbstractTagTest {
         ActionComponent component = (ActionComponent) tag.getComponent();
 
         tag.doEndTag();
-        assertTrue(oldInvocation == ActionContext.getContext().getActionInvocation());
+        assertEquals(oldInvocation.invoke(), ActionContext.getContext().getActionInvocation().invoke());
 
         // Basic sanity check of clearTagStateForTagPoolingServers() behaviour for Struts Tags after doEndTag().
         ActionTag freshTag = new ActionTag();

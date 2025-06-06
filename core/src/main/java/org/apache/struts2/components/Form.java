@@ -18,28 +18,28 @@
  */
 package org.apache.struts2.components;
 
-import com.opensymphony.xwork2.ObjectFactory;
-import com.opensymphony.xwork2.config.Configuration;
-import com.opensymphony.xwork2.config.RuntimeConfiguration;
-import com.opensymphony.xwork2.config.entities.ActionConfig;
-import com.opensymphony.xwork2.config.entities.InterceptorMapping;
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.interceptor.MethodFilterInterceptorUtil;
-import com.opensymphony.xwork2.util.ValueStack;
-import com.opensymphony.xwork2.validator.ActionValidatorManager;
-import com.opensymphony.xwork2.validator.FieldValidator;
-import com.opensymphony.xwork2.validator.ValidationException;
-import com.opensymphony.xwork2.validator.ValidationInterceptor;
-import com.opensymphony.xwork2.validator.Validator;
-import com.opensymphony.xwork2.validator.ValidatorContext;
-import com.opensymphony.xwork2.validator.validators.VisitorFieldValidator;
+import org.apache.struts2.ObjectFactory;
+import org.apache.struts2.config.Configuration;
+import org.apache.struts2.config.RuntimeConfiguration;
+import org.apache.struts2.config.entities.ActionConfig;
+import org.apache.struts2.config.entities.InterceptorMapping;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.interceptor.MethodFilterInterceptorUtil;
+import org.apache.struts2.util.ValueStack;
+import org.apache.struts2.validator.ActionValidatorManager;
+import org.apache.struts2.validator.FieldValidator;
+import org.apache.struts2.validator.ValidationException;
+import org.apache.struts2.validator.ValidationInterceptor;
+import org.apache.struts2.validator.Validator;
+import org.apache.struts2.validator.ValidatorContext;
+import org.apache.struts2.validator.validators.VisitorFieldValidator;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.struts2.dispatcher.mapper.ActionMapping;
 import org.apache.struts2.views.annotations.StrutsTag;
 import org.apache.struts2.views.annotations.StrutsTagAttribute;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -172,7 +172,7 @@ public class Form extends ClosingUIBean {
 
         if (name == null) {
             //make the name the same as the id
-            String id = (String) getParameters().get("id");
+            String id = (String) getAttributes().get("id");
             if (StringUtils.isNotEmpty(id)) {
                 addParameter("name", id);
             }
@@ -204,7 +204,7 @@ public class Form extends ClosingUIBean {
 
         // keep a collection of the tag names for anything special the templates might want to do (such as pure client
         // side validation)
-        if (!parameters.containsKey("tagNames")) {
+        if (!attributes.containsKey("tagNames")) {
             // we have this if check so we don't do this twice (on open and close of the template)
             addParameter("tagNames", new ArrayList());
         }
@@ -242,7 +242,7 @@ public class Form extends ClosingUIBean {
     protected void evaluateClientSideJsEnablement(String actionName, String namespace, String actionMethod) {
 
         // Only evaluate if Client-Side js is to be enable when validate=true
-        Boolean validate = (Boolean) getParameters().get("validate");
+        Boolean validate = (Boolean) getAttributes().get("validate");
         if (validate != null && validate) {
 
             addParameter("performValidation", Boolean.FALSE);
@@ -253,11 +253,10 @@ public class Form extends ClosingUIBean {
             if (actionConfig != null) {
                 List<InterceptorMapping> interceptors = actionConfig.getInterceptors();
                 for (InterceptorMapping interceptorMapping : interceptors) {
-                    if (ValidationInterceptor.class.isInstance(interceptorMapping.getInterceptor())) {
-                        ValidationInterceptor validationInterceptor = (ValidationInterceptor) interceptorMapping.getInterceptor();
+                    if (interceptorMapping.getInterceptor() instanceof ValidationInterceptor validationInterceptor) {
 
-                        Set excludeMethods = validationInterceptor.getExcludeMethodsSet();
-                        Set includeMethods = validationInterceptor.getIncludeMethodsSet();
+                        Set<String> excludeMethods = validationInterceptor.getExcludeMethodsSet();
+                        Set<String> includeMethods = validationInterceptor.getIncludeMethodsSet();
 
                         if (MethodFilterInterceptorUtil.applyMethod(excludeMethods, includeMethods, actionMethod)) {
                             addParameter("performValidation", Boolean.TRUE);
@@ -270,7 +269,7 @@ public class Form extends ClosingUIBean {
     }
 
     public List getValidators(String name) {
-        Class actionClass = (Class) getParameters().get("actionClass");
+        Class actionClass = (Class) getAttributes().get("actionClass");
         if (actionClass == null) {
             return Collections.EMPTY_LIST;
         }
@@ -279,7 +278,7 @@ public class Form extends ClosingUIBean {
         ActionMapping mapping = actionMapper.getMappingFromActionName(formActionValue);
 
         if (mapping == null) {
-            mapping = actionMapper.getMappingFromActionName((String) getParameters().get("actionName"));
+            mapping = actionMapper.getMappingFromActionName((String) getAttributes().get("actionName"));
         }
 
         if (mapping == null) {
@@ -309,8 +308,7 @@ public class Form extends ClosingUIBean {
         if (actionConfig != null) {
             List<InterceptorMapping> interceptors = actionConfig.getInterceptors();
             for (InterceptorMapping interceptorMapping : interceptors) {
-                if (ValidationInterceptor.class.isInstance(interceptorMapping.getInterceptor())) {
-                    ValidationInterceptor validationInterceptor = (ValidationInterceptor) interceptorMapping.getInterceptor();
+                if (interceptorMapping.getInterceptor() instanceof ValidationInterceptor validationInterceptor) {
                     return validationInterceptor.isValidateAnnotatedMethodOnly();
                 }
             }
@@ -322,8 +320,7 @@ public class Form extends ClosingUIBean {
                                      List<Validator> validatorList, List<Validator> resultValidators, String prefix) {
 
         for (Validator validator : validatorList) {
-            if (validator instanceof FieldValidator) {
-                FieldValidator fieldValidator = (FieldValidator) validator;
+            if (validator instanceof FieldValidator fieldValidator) {
 
                 if (validator instanceof VisitorFieldValidator) {
                     VisitorFieldValidator vfValidator = (VisitorFieldValidator) fieldValidator;
@@ -456,7 +453,7 @@ public class Form extends ClosingUIBean {
         }
         String methodName = "get" + StringUtils.capitalize(visitorFieldName);
         try {
-            Method method = actionClass.getMethod(methodName, new Class[0]);
+            Method method = actionClass.getMethod(methodName);
             return method.getReturnType();
         } catch (NoSuchMethodException e) {
             return null;

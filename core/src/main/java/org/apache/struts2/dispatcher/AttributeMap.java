@@ -20,7 +20,7 @@ package org.apache.struts2.dispatcher;
 
 import org.apache.struts2.StrutsStatics;
 
-import javax.servlet.jsp.PageContext;
+import jakarta.servlet.jsp.PageContext;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
@@ -86,7 +86,7 @@ public class AttributeMap extends AbstractMap<String, Object> {
 
         PageContext pc = getPageContext();
 
-        if (pc == null) {
+        if (pc == null || pc.getRequest() == null) {
             RequestMap request = (RequestMap) context.get(DispatcherConstants.REQUEST);
             SessionMap session = (SessionMap) context.get(DispatcherConstants.SESSION);
             ApplicationMap application = (ApplicationMap) context.get(DispatcherConstants.APPLICATION);
@@ -168,9 +168,8 @@ public class AttributeMap extends AbstractMap<String, Object> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof AttributeMap)) return false;
+        if (!(o instanceof AttributeMap that)) return false;
         if (!super.equals(o)) return false;
-        AttributeMap that = (AttributeMap) o;
         return Objects.equals(context, that.context);
     }
 

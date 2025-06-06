@@ -18,14 +18,11 @@
  */
 package org.apache.struts2.components;
 
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.util.ValueStack;
-import org.apache.struts2.dispatcher.mapper.ActionMapper;
+import org.apache.struts2.util.ValueStack;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.struts2.dispatcher.mapper.ActionMapping;
 import org.apache.struts2.views.annotations.StrutsTagAttribute;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * FormButton.
@@ -58,7 +55,7 @@ public abstract class FormButton extends ClosingUIBean {
         addParameter("type", submitType);
 
         if (!BUTTON_TYPE_INPUT.equals(submitType) && (label == null)) {
-            addParameter("label", getParameters().get("nameValue"));
+            addParameter("label", getAttributes().get("nameValue"));
         }
 
         if (action != null || method != null) {
@@ -101,8 +98,8 @@ public abstract class FormButton extends ClosingUIBean {
             // this check is needed for backwards compatibility with 2.1.x
             tmpId = findString(id);
         } else {
-            if (form != null && form.getParameters().get("id") != null) {
-                tmpId = tmpId + form.getParameters().get("id").toString() + "_";
+            if (form != null && form.getAttributes().get("id") != null) {
+                tmpId = tmpId + form.getAttributes().get("id").toString() + "_";
             }
             if (name != null) {
                 tmpId = tmpId + escape(findString(name));
@@ -131,11 +128,6 @@ public abstract class FormButton extends ClosingUIBean {
      * @return <tt>true</tt> if type image is supported.
      */
     protected abstract boolean supportsImageType();
-
-    @Inject
-    public void setActionMapper(ActionMapper mapper) {
-        this.actionMapper = mapper;
-    }
 
     @StrutsTagAttribute(description = "Set action attribute.")
     public void setAction(String action) {

@@ -25,23 +25,13 @@ public class StrutsUploadedFile implements UploadedFile {
     private final File file;
     private final String contentType;
     private final String originalName;
+    private final String inputName;
 
-    /**
-     * Use builder instead of constructor
-     * @param file an uploaded file
-     * @deprecated since Struts 6.4.0
-     */
-    @Deprecated
-    public StrutsUploadedFile(File file) {
-        this.file = file;
-        this.contentType = null;
-        this.originalName = null;
-    }
-
-    private StrutsUploadedFile(File file, String contentType, String originalName) {
+    private StrutsUploadedFile(File file, String contentType, String originalName, String inputName) {
         this.file = file;
         this.contentType = contentType;
         this.originalName = originalName;
+        this.inputName = inputName;
     }
 
     @Override
@@ -85,10 +75,16 @@ public class StrutsUploadedFile implements UploadedFile {
     }
 
     @Override
+    public String getInputName() {
+        return inputName;
+    }
+
+    @Override
     public String toString() {
         return "StrutsUploadedFile{" +
             "contentType='" + contentType + '\'' +
             ", originalName='" + originalName + '\'' +
+            ", inputName='" + inputName + '\'' +
             '}';
     }
 
@@ -96,6 +92,7 @@ public class StrutsUploadedFile implements UploadedFile {
         private final File file;
         private String contentType;
         private String originalName;
+        private String inputName;
 
         private Builder(File file) {
             this.file = file;
@@ -115,8 +112,13 @@ public class StrutsUploadedFile implements UploadedFile {
             return this;
         }
 
+        public Builder withInputName(String inputName) {
+            this.inputName = inputName;
+            return this;
+        }
+
         public UploadedFile build() {
-            return new StrutsUploadedFile(this.file, this.contentType, this.originalName);
+            return new StrutsUploadedFile(this.file, this.contentType, this.originalName, this.inputName);
         }
     }
 }

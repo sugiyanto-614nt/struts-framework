@@ -18,121 +18,90 @@
  */
 package org.apache.struts2.result;
 
-import com.mockobjects.dynamic.C;
-import com.mockobjects.dynamic.Mock;
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.mock.MockActionInvocation;
-import com.opensymphony.xwork2.util.ValueStackFactory;
-import org.apache.struts2.ServletActionContext;
+import org.apache.struts2.ActionContext;
 import org.apache.struts2.StrutsInternalTestCase;
 import org.apache.struts2.StrutsStatics;
-import org.apache.struts2.dispatcher.HttpParameters;
-
-import javax.servlet.RequestDispatcher;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import org.apache.struts2.mock.MockActionInvocation;
+import org.apache.struts2.util.ValueStack;
+import org.apache.struts2.util.ValueStackFactory;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 public class ServletDispatcherResultTest extends StrutsInternalTestCase implements StrutsStatics {
 
-    public void testInclude() {
+    private MockHttpServletRequest request;
+    private MockHttpServletResponse response;
+    private MockActionInvocation invocation;
+    private ValueStack stack;
+
+    public void testForward() throws Exception {
         ServletDispatcherResult view = new ServletDispatcherResult();
         view.setLocation("foo.jsp");
 
-        Mock dispatcherMock = new Mock(RequestDispatcher.class);
-        dispatcherMock.expect("include", C.ANY_ARGS);
+        request.setRequestURI("/app/namespace/my.action");
+        request.setContextPath("/app");
+        request.setServletPath("/namespace/my.action");
+        request.setPathInfo(null);
+        request.setQueryString("a=1&b=2");
 
-        Mock requestMock = new Mock(HttpServletRequest.class);
-        requestMock.expectAndReturn("getAttribute", "struts.actiontag.invocation", null);
-        requestMock.expectAndReturn("getRequestDispatcher", C.args(C.eq("foo.jsp")), dispatcherMock.proxy());
+        request.setAttribute("struts.actiontag.invocation", null);
+        request.setAttribute("jakarta.servlet.include.servlet_path", null);
 
-        Mock responseMock = new Mock(HttpServletResponse.class);
-        responseMock.expectAndReturn("isCommitted", Boolean.TRUE);
+        response.setCommitted(Boolean.FALSE);
 
-        ServletActionContext.setRequest((HttpServletRequest) requestMock.proxy());
-        ServletActionContext.setResponse((HttpServletResponse) responseMock.proxy());
+        view.execute(invocation);
 
-        try {
-            view.execute(null);
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail();
-        }
-
-        dispatcherMock.verify();
-        requestMock.verify();
-        dispatcherMock.verify();
+        assertEquals("foo.jsp", response.getForwardedUrl());
     }
 
-    public void testSimple() {
+    public void testInclude() throws Exception {
         ServletDispatcherResult view = new ServletDispatcherResult();
         view.setLocation("foo.jsp");
 
-        Mock dispatcherMock = new Mock(RequestDispatcher.class);
-        dispatcherMock.expect("forward", C.ANY_ARGS);
+        request.setRequestURI("/app/namespace/my.action");
+        request.setContextPath("/app");
+        request.setServletPath("/namespace/my.action");
+        request.setPathInfo(null);
+        request.setQueryString("a=1&b=2");
 
-        Mock requestMock = new Mock(HttpServletRequest.class);
-        requestMock.expectAndReturn("getAttribute", "struts.actiontag.invocation", null);
-        requestMock.expectAndReturn("getAttribute", "javax.servlet.include.servlet_path", null);
-        requestMock.expectAndReturn("getRequestDispatcher", C.args(C.eq("foo.jsp")), dispatcherMock.proxy());
-        requestMock.expect("setAttribute", C.ANY_ARGS); // this is a bad mock, but it works
-        requestMock.expect("setAttribute", C.ANY_ARGS); // this is a bad mock, but it works
-        requestMock.matchAndReturn("getRequestURI", "foo.jsp");
+        request.setAttribute("struts.actiontag.invocation", null);
+        response.setCommitted(Boolean.TRUE);
 
-        Mock responseMock = new Mock(HttpServletResponse.class);
-        responseMock.expectAndReturn("isCommitted", Boolean.FALSE);
+        view.execute(invocation);
 
-        ServletActionContext.setRequest((HttpServletRequest) requestMock.proxy());
-        ServletActionContext.setResponse((HttpServletResponse) responseMock.proxy());
-
-        try {
-            view.execute(null);
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail();
-        }
-
-        dispatcherMock.verify();
-        requestMock.verify();
-        dispatcherMock.verify();
+        assertEquals("foo.jsp", response.getIncludedUrl());
     }
 
-    public void testWithParameter() {
+    public void testWithParameter() throws Exception {
         ServletDispatcherResult view = container.inject(ServletDispatcherResult.class);
         view.setLocation("foo.jsp?bar=1");
 
-        Mock dispatcherMock = new Mock(RequestDispatcher.class);
-        dispatcherMock.expect("forward", C.ANY_ARGS);
+        view.execute(invocation);
 
-        Mock requestMock = new Mock(HttpServletRequest.class);
-        requestMock.expectAndReturn("getAttribute", "struts.actiontag.invocation", null);
-        requestMock.expectAndReturn("getAttribute", "javax.servlet.include.servlet_path", null);
-        requestMock.expectAndReturn("getRequestDispatcher", C.args(C.eq("foo.jsp?bar=1")), dispatcherMock.proxy());
-        requestMock.expect("setAttribute", C.ANY_ARGS); // this is a bad mock, but it works
-        requestMock.expect("setAttribute", C.ANY_ARGS); // this is a bad mock, but it works
-        requestMock.matchAndReturn("getRequestURI", "foo.jsp");
+        assertTrue(invocation.getInvocationContext().getParameters().contains("bar"));
+        assertEquals("1", invocation.getInvocationContext().getParameters().get("bar").getValue());
 
-        Mock responseMock = new Mock(HttpServletResponse.class);
-        responseMock.expectAndReturn("isCommitted", Boolean.FALSE);
-
-        ServletActionContext.setRequest((HttpServletRequest) requestMock.proxy());
-        ServletActionContext.setResponse((HttpServletResponse) responseMock.proxy());
-
-        MockActionInvocation mockActionInvocation = new MockActionInvocation();
-        mockActionInvocation.setInvocationContext(ActionContext.getContext());
-        mockActionInvocation.setStack(container.getInstance(ValueStackFactory.class).createValueStack());
-
-        try {
-            view.execute(mockActionInvocation);
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail();
-        }
-
-        assertTrue(mockActionInvocation.getInvocationContext().getParameters().contains("bar"));
-        assertEquals("1", mockActionInvocation.getInvocationContext().getParameters().get("bar").getValue());
-        assertEquals("1", ((HttpParameters) mockActionInvocation.getInvocationContext().getContextMap().get("parameters")).get("bar").getValue());
-        dispatcherMock.verify();
-        requestMock.verify();
-        dispatcherMock.verify();
+        // See https://issues.apache.org/jira/browse/WW-5486
+        assertEquals("1", stack.findString("#parameters.bar"));
     }
+
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        invocation = new MockActionInvocation();
+        request = new MockHttpServletRequest();
+        response = new MockHttpServletResponse();
+        stack = container.getInstance(ValueStackFactory.class).createValueStack();
+        invocation.setStack(stack);
+
+        stack.getActionContext()
+                .withServletRequest(request)
+                .withServletResponse(response)
+                .withActionInvocation(invocation)
+                .withValueStack(stack)
+                .bind();
+
+        invocation.setInvocationContext(ActionContext.getContext());
+    }
+
 }

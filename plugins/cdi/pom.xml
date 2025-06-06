@@ -25,7 +25,7 @@
     <parent>
         <groupId>org.apache.struts</groupId>
         <artifactId>struts2-plugins</artifactId>
-        <version>6.7.0-SNAPSHOT</version>
+        <version>7.0.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>struts2-cdi-plugin</artifactId>
@@ -33,37 +33,40 @@
     <packaging>jar</packaging>
 
     <dependencies>
-
         <dependency>
-            <groupId>javax.enterprise</groupId>
-            <artifactId>cdi-api</artifactId>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.jboss.weld</groupId>
-            <artifactId>weld-core</artifactId>
-            <scope>provided</scope>
+            <artifactId>weld-core-impl</artifactId>
+            <version>${weld.version}</version>
+            <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.jboss.weld.se</groupId>
-            <artifactId>weld-se</artifactId>
+            <artifactId>weld-se-core</artifactId>
+            <version>${weld.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-test</artifactId>
+            <groupId>com.github.h-thurow</groupId>
+            <artifactId>simple-jndi</artifactId>
+            <version>0.25.0</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <properties>

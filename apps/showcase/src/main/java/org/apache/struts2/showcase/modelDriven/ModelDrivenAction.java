@@ -20,8 +20,8 @@
  */
 package org.apache.struts2.showcase.modelDriven;
 
-import com.opensymphony.xwork2.ActionSupport;
-import com.opensymphony.xwork2.ModelDriven;
+import org.apache.struts2.ActionSupport;
+import org.apache.struts2.ModelDriven;
 import org.apache.struts2.showcase.modelDriven.model.Gangster;
 
 /**
@@ -42,7 +42,7 @@ public class ModelDrivenAction extends ActionSupport implements ModelDriven {
 	}
 
 	@Override
-	public Object getModel() {
+	public Gangster getModel() {
 		return new Gangster();
 	}
 }

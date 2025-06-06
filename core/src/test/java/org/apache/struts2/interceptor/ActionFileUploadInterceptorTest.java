@@ -18,29 +18,28 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.ActionSupport;
-import com.opensymphony.xwork2.DefaultLocaleProvider;
-import com.opensymphony.xwork2.ValidationAwareSupport;
-import com.opensymphony.xwork2.mock.MockActionInvocation;
-import com.opensymphony.xwork2.mock.MockActionProxy;
-import com.opensymphony.xwork2.util.ClassLoaderUtil;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.struts2.ServletActionContext;
+import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletDiskFileUpload;
+import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletFileUpload;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.ActionSupport;
 import org.apache.struts2.StrutsInternalTestCase;
+import org.apache.struts2.ValidationAwareSupport;
 import org.apache.struts2.action.UploadedFilesAware;
 import org.apache.struts2.dispatcher.multipart.JakartaMultiPartRequest;
 import org.apache.struts2.dispatcher.multipart.MultiPartRequestWrapper;
 import org.apache.struts2.dispatcher.multipart.StrutsUploadedFile;
 import org.apache.struts2.dispatcher.multipart.UploadedFile;
+import org.apache.struts2.locale.DefaultLocaleProvider;
+import org.apache.struts2.mock.MockActionInvocation;
+import org.apache.struts2.mock.MockActionProxy;
+import org.apache.struts2.util.ClassLoaderUtil;
+import org.assertj.core.util.Files;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -51,64 +50,23 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
 
-    public static final UploadedFile EMPTY_FILE = new UploadedFile() {
-        @Override
-        public Long length() {
-            return 0L;
-        }
-
-        @Override
-        public String getName() {
-            return "";
-        }
-
-        @Override
-        public boolean isFile() {
-            return false;
-        }
-
-        @Override
-        public boolean delete() {
-            return false;
-        }
-
-        @Override
-        public String getAbsolutePath() {
-            return null;
-        }
-
-        @Override
-        public byte[] getContent() {
-            return new byte[0];
-        }
-
-        @Override
-        public String getOriginalName() {
-            return null;
-        }
-
-        @Override
-        public String getContentType() {
-            return null;
-        }
-    };
-
+    private MockHttpServletRequest request;
     private ActionFileUploadInterceptor interceptor;
     private File tempDir;
 
     private final String htmlContent = "<html><head></head><body>html content</body></html>";
     private final String plainContent = "plain content";
     private final String boundary = "simple boundary";
-    private final String endline = "\r\n";
+    private final String endLine = "\r\n";
 
     public void testAcceptFileWithEmptyAllowedTypesAndExtensions() {
         // when allowed type is empty
         ValidationAwareSupport validation = new ValidationAwareSupport();
-        boolean ok = interceptor.acceptFile(validation, EMPTY_FILE, "filename", "text/plain", "inputName");
+        boolean ok = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename", "text/plain", "inputName");
 
-        assertTrue(ok);
-        assertTrue(validation.getFieldErrors().isEmpty());
-        assertFalse(validation.hasErrors());
+        assertThat(ok).isTrue();
+        assertThat(validation.getFieldErrors()).isEmpty();
+        assertThat(validation.hasErrors()).isFalse();
     }
 
     public void testAcceptFileWithoutEmptyTypes() {
@@ -116,39 +74,38 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
 
         // when file is of allowed types
         ValidationAwareSupport validation = new ValidationAwareSupport();
-        boolean ok = interceptor.acceptFile(validation, EMPTY_FILE, "filename.txt", "text/plain", "inputName");
+        boolean ok = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename.txt", "text/plain", "inputName");
 
-        assertTrue(ok);
-        assertTrue(validation.getFieldErrors().isEmpty());
-        assertFalse(validation.hasErrors());
+        assertThat(ok).isTrue();
+        assertThat(validation.getFieldErrors()).isEmpty();
+        assertThat(validation.hasErrors()).isFalse();
 
         // when file is not of allowed types
         validation = new ValidationAwareSupport();
-        boolean notOk = interceptor.acceptFile(validation, EMPTY_FILE, "filename.html", "text/html", "inputName");
+        boolean notOk = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename.html", "text/html", "inputName");
 
-        assertFalse(notOk);
-        assertFalse(validation.getFieldErrors().isEmpty());
-        assertTrue(validation.hasErrors());
+        assertThat(notOk).isFalse();
+        assertThat(validation.getFieldErrors()).isNotEmpty();
+        assertThat(validation.hasErrors()).isTrue();
     }
-
 
     public void testAcceptFileWithWildcardContent() {
         interceptor.setAllowedTypes("text/*");
 
         ValidationAwareSupport validation = new ValidationAwareSupport();
-        boolean ok = interceptor.acceptFile(validation, EMPTY_FILE, "filename.txt", "text/plain", "inputName");
+        boolean ok = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename.txt", "text/plain", "inputName");
 
-        assertTrue(ok);
-        assertTrue(validation.getFieldErrors().isEmpty());
-        assertFalse(validation.hasErrors());
+        assertThat(ok).isTrue();
+        assertThat(validation.getFieldErrors()).isEmpty();
+        assertThat(validation.hasErrors()).isFalse();
 
         interceptor.setAllowedTypes("text/h*");
         validation = new ValidationAwareSupport();
-        boolean notOk = interceptor.acceptFile(validation, EMPTY_FILE, "filename.html", "text/plain", "inputName");
+        boolean notOk = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename.html", "text/plain", "inputName");
 
-        assertFalse(notOk);
-        assertFalse(validation.getFieldErrors().isEmpty());
-        assertTrue(validation.hasErrors());
+        assertThat(notOk).isFalse();
+        assertThat(validation.getFieldErrors()).isNotEmpty();
+        assertThat(validation.hasErrors()).isTrue();
     }
 
     public void testAcceptFileWithoutEmptyExtensions() {
@@ -156,48 +113,62 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
 
         // when file is of allowed extensions
         ValidationAwareSupport validation = new ValidationAwareSupport();
-        boolean ok = interceptor.acceptFile(validation, EMPTY_FILE, "filename.txt", "text/plain", "inputName");
+        boolean ok = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename.txt", "text/plain", "inputName");
 
-        assertTrue(ok);
-        assertTrue(validation.getFieldErrors().isEmpty());
-        assertFalse(validation.hasErrors());
+        assertThat(ok).isTrue();
+        assertThat(validation.getFieldErrors()).isEmpty();
+        assertThat(validation.hasErrors()).isFalse();
 
         // when file is not of allowed extensions
         validation = new ValidationAwareSupport();
-        boolean notOk = interceptor.acceptFile(validation, EMPTY_FILE, "filename.html", "text/html", "inputName");
+        boolean notOk = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename.html", "text/html", "inputName");
 
-        assertFalse(notOk);
-        assertFalse(validation.getFieldErrors().isEmpty());
-        assertTrue(validation.hasErrors());
+        assertThat(notOk).isFalse();
+        assertThat(validation.getFieldErrors()).isNotEmpty();
+        assertThat(validation.hasErrors()).isTrue();
 
-        //test with multiple extensions
         interceptor.setAllowedExtensions(".txt,.lol");
         validation = new ValidationAwareSupport();
-        ok = interceptor.acceptFile(validation, EMPTY_FILE, "filename.lol", "text/plain", "inputName");
+        ok = interceptor.acceptFile(validation, createTestFile(Files.newTemporaryFile()), "filename.lol", "text/plain", "inputName");
 
-        assertTrue(ok);
-        assertTrue(validation.getFieldErrors().isEmpty());
-        assertFalse(validation.hasErrors());
+        assertThat(ok).isTrue();
+        assertThat(validation.getFieldErrors()).isEmpty();
+        assertThat(validation.hasErrors()).isFalse();
     }
 
     public void testAcceptFileWithNoFile() {
-        ActionFileUploadInterceptor interceptor = new ActionFileUploadInterceptor();
-        interceptor.setContainer(container);
-
         interceptor.setAllowedTypes("text/plain");
 
         // when file is not of allowed types
         ValidationAwareSupport validation = new ValidationAwareSupport();
         boolean notOk = interceptor.acceptFile(validation, null, "filename.html", "text/html", "inputName");
 
-        assertFalse(notOk);
-        assertFalse(validation.getFieldErrors().isEmpty());
-        assertTrue(validation.hasErrors());
-        List<String> errors = validation.getFieldErrors().get("inputName");
-        assertEquals(1, errors.size());
-        String msg = errors.get(0);
-        assertTrue(msg.startsWith("Error uploading:"));
-        assertTrue(msg.indexOf("inputName") > 0);
+        assertThat(notOk).isFalse();
+        assertThat(validation.getFieldErrors()).isNotEmpty();
+        assertThat(validation.hasErrors()).isTrue();
+        assertThat(validation.getFieldErrors().get("inputName"))
+                .hasSize(1)
+                .first()
+                .asString()
+                .startsWith("Error uploading:")
+                .contains("inputName");
+    }
+
+    public void testAcceptFileWithNoContent() {
+        interceptor.setAllowedTypes("text/plain");
+
+        ValidationAwareSupport validation = new ValidationAwareSupport();
+        boolean notOk = interceptor.acceptFile(validation, createTestFile(null), "filename.html", "text/plain", "inputName");
+
+        assertThat(notOk).isFalse();
+        assertThat(validation.getFieldErrors()).isNotEmpty();
+        assertThat(validation.hasErrors()).isTrue();
+        assertThat(validation.getFieldErrors().get("inputName"))
+                .hasSize(1)
+                .first()
+                .asString()
+                .startsWith("Error uploading:")
+                .contains("inputName");
     }
 
     public void testAcceptFileWithMaxSize() throws Exception {
@@ -208,23 +179,18 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
 
         URL url = ClassLoaderUtil.getResource("log4j2.xml", ActionFileUploadInterceptorTest.class);
         File file = new File(new URI(url.toString()));
-        assertTrue("log4j2.xml should be in src/test folder", file.exists());
+        assertThat(file).exists();
         UploadedFile uploadedFile = StrutsUploadedFile.Builder.create(file).withContentType("text/html").withOriginalName("filename").build();
         boolean notOk = interceptor.acceptFile(validation, uploadedFile, "filename", "text/html", "inputName");
 
-        assertFalse(notOk);
-        assertFalse(validation.getFieldErrors().isEmpty());
-        assertTrue(validation.hasErrors());
-        List<String> errors = validation.getFieldErrors().get("inputName");
-        assertEquals(1, errors.size());
-        String msg = errors.get(0);
-        // the error message should contain at least this test
-        assertThat(msg).contains(
-            "The file is too large to be uploaded",
-            "inputName",
-            "log4j2.xml",
-            "allowed mx size is 10"
-        );
+        assertThat(notOk).isFalse();
+        assertThat(validation.getFieldErrors()).isNotEmpty();
+        assertThat(validation.hasErrors()).isTrue();
+        assertThat(validation.getFieldErrors().get("inputName"))
+                .hasSize(1)
+                .first()
+                .asString()
+                .contains("The file is too large to be uploaded", "inputName", "log4j2.xml", "allowed mx size is 10");
     }
 
     public void testNoMultipartRequest() throws Exception {
@@ -240,14 +206,12 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setInvocationContext(ActionContext.getContext());
 
         // if no multipart request it will bypass and execute it
-        assertEquals("NoMultipart", interceptor.intercept(mai));
+        assertThat(interceptor.intercept(mai)).isEqualTo("NoMultipart");
     }
 
     public void testInvalidContentTypeMultipartRequest() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest();
-
-        req.setContentType("multipart/form-data"); // not a multipart contentype
-        req.setMethod("post");
+        request.setContentType("multipart/form-data"); // not a multipart Content-Type
+        request.setMethod("post");
 
         MyFileUploadAction action = container.inject(MyFileUploadAction.class);
         MockActionInvocation mai = new MockActionInvocation();
@@ -255,11 +219,11 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
 
-        ActionContext.getContext().put(ServletActionContext.HTTP_REQUEST, createMultipartRequestMaxSize(req, 2000));
+        ActionContext.getContext().withServletRequest(createMultipartRequestMaxSize(2000));
 
         interceptor.intercept(mai);
 
-        assertTrue(action.hasErrors());
+        assertThat(action.hasErrors()).isTrue();
     }
 
     public void testNoContentMultipartRequest() throws Exception {
@@ -276,28 +240,28 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
 
-        ActionContext.getContext().put(ServletActionContext.HTTP_REQUEST, createMultipartRequestMaxSize(req, 2000));
+        ActionContext.getContext().withServletRequest(createMultipartRequestMaxSize(2000));
 
         interceptor.intercept(mai);
 
-        assertTrue(action.hasErrors());
+        assertThat(action.hasErrors()).isTrue();
     }
 
     public void testSuccessUploadOfATextFileMultipartRequest() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest();
-        req.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        req.setMethod("post");
-        req.addHeader("Content-type", "multipart/form-data; boundary=---1234");
+        request.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        request.setMethod("post");
+        request.addHeader("Content-type", "multipart/form-data; boundary=---1234");
 
-        // inspired by the unit tests for jakarta commons fileupload
-        String content = ("-----1234\r\n" +
-            "Content-Disposition: form-data; name=\"file\"; filename=\"deleteme.txt\"\r\n" +
-            "Content-Type: text/html\r\n" +
-            "\r\n" +
-            "Unit test of ActionFileUploadInterceptor" +
-            "\r\n" +
-            "-----1234--\r\n");
-        req.setContent(content.getBytes(StandardCharsets.US_ASCII));
+        // inspired by the unit tests for Jakarta Commons FileUpload
+        String content = ("""
+                -----1234\r
+                Content-Disposition: form-data; name="file"; filename="deleteme.txt"\r
+                Content-Type: text/html\r
+                \r
+                Unit test of ActionFileUploadInterceptor\r
+                -----1234--\r
+                """);
+        request.setContent(content.getBytes(StandardCharsets.US_ASCII));
 
         MyFileUploadAction action = new MyFileUploadAction();
 
@@ -305,42 +269,34 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setAction(action);
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
-        ActionContext.getContext().put(ServletActionContext.HTTP_REQUEST, createMultipartRequestMaxSize(req, 2000));
+        ActionContext.getContext().withServletRequest(createMultipartRequestMaxSize(2000));
 
         interceptor.intercept(mai);
 
-        assertFalse(action.hasErrors());
+        assertThat(action.hasErrors()).isFalse();
 
         List<UploadedFile> files = action.getUploadFiles();
 
-        assertNotNull(files);
-        assertEquals(1, files.size());
-        assertEquals("text/html", files.get(0).getContentType());
-        assertNotNull("deleteme.txt", files.get(0).getOriginalName());
+        assertThat(files).isNotNull().hasSize(1);
+        assertThat(files.get(0).getContentType()).isEqualTo("text/html");
+        assertThat(files.get(0).getOriginalName()).isEqualTo("deleteme.txt");
     }
 
     /**
-     * tests whether with multiple files sent with the same name, the ones with forbiddenTypes (see
+     * Tests whether with multiple files sent with the same name, the ones with forbiddenTypes (see
      * ActionFileUploadInterceptor.setAllowedTypes(...) ) are sorted out.
      */
     public void testMultipleAccept() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest();
-        req.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        req.setMethod("POST");
-        req.addHeader("Content-type", "multipart/form-data; boundary=" + boundary);
+        request.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        request.setMethod("POST");
+        request.addHeader("Content-type", "multipart/form-data; boundary=\"" + boundary + "\"");
         String content = encodeTextFile("test.html", "text/plain", plainContent) +
-            encodeTextFile("test1.html", "text/html", htmlContent) +
-            encodeTextFile("test2.html", "text/html", htmlContent) +
-            endline +
-            endline +
-            endline +
-            "--" +
-            boundary +
-            "--" +
-            endline;
-        req.setContent(content.getBytes());
+                encodeTextFile("test1.html", "text/html", htmlContent) +
+                encodeTextFile("test2.html", "text/html", htmlContent) +
+                endLine + "--" + boundary + "--";
+        request.setContent(content.getBytes());
 
-        assertTrue(ServletFileUpload.isMultipartContent(req));
+        assertThat(JakartaServletDiskFileUpload.isMultipartContent(request)).isTrue();
 
         MyFileUploadAction action = new MyFileUploadAction();
         container.inject(action);
@@ -348,36 +304,36 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setAction(action);
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
-        ActionContext.getContext().put(ServletActionContext.HTTP_REQUEST, createMultipartRequestMaxSize(req, 2000));
+        ActionContext.getContext().withServletRequest(createMultipartRequestMaxFiles());
 
         interceptor.setAllowedTypes("text/html");
         interceptor.intercept(mai);
 
         List<UploadedFile> files = action.getUploadFiles();
 
-        assertNotNull(files);
-        assertEquals("files accepted ", 2, files.size());
-        assertEquals("text/html", files.get(0).getContentType());
-        assertNotNull("test1.html", files.get(0).getOriginalName());
+        assertThat(files).isNotNull().hasSize(2);
+        assertThat(files.get(0).getContentType()).isEqualTo("text/html");
+        assertThat(files.get(0).getOriginalName()).isEqualTo("test1.html");
+        assertThat(files.get(1).getContentType()).isEqualTo("text/html");
+        assertThat(files.get(1).getOriginalName()).isEqualTo("test2.html");
     }
 
     public void testUnacceptedNumberOfFiles() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest();
-        req.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        req.setMethod("POST");
-        req.addHeader("Content-type", "multipart/form-data; boundary=" + boundary);
+        request.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        request.setMethod("POST");
+        request.addHeader("Content-type", "multipart/form-data; boundary=" + boundary);
         String content = encodeTextFile("test.html", "text/plain", plainContent) +
-            encodeTextFile("test1.html", "text/html", htmlContent) +
-            encodeTextFile("test2.html", "text/html", htmlContent) +
-            encodeTextFile("test3.html", "text/html", htmlContent) +
-            endline +
-            "--" +
-            boundary +
-            "--" +
-            endline;
-        req.setContent(content.getBytes());
+                encodeTextFile("test1.html", "text/html", htmlContent) +
+                encodeTextFile("test2.html", "text/html", htmlContent) +
+                encodeTextFile("test3.html", "text/html", htmlContent) +
+                endLine +
+                "--" +
+                boundary +
+                "--" +
+                endLine;
+        request.setContent(content.getBytes());
 
-        assertTrue(ServletFileUpload.isMultipartContent(req));
+        assertThat(JakartaServletFileUpload.isMultipartContent(request)).isTrue();
 
         MyFileUploadAction action = new MyFileUploadAction();
         container.inject(action);
@@ -385,31 +341,33 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setAction(action);
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
-        ActionContext.getContext().withServletRequest(createMultipartRequestMaxFiles(req));
+        ActionContext.getContext().withServletRequest(createMultipartRequestMaxFiles());
 
         interceptor.setAllowedTypes("text/html");
         interceptor.intercept(mai);
 
-        assertNull(action.getUploadFiles());
-        assertEquals(1, action.getActionErrors().size());
-        assertEquals("Request exceeded allowed number of files! Max allowed files number is: 3!", action.getActionErrors().iterator().next());
+        assertThat(action.getUploadFiles()).isNull();
+        assertThat(action.getActionErrors())
+                .hasSize(1)
+                .first()
+                .isEqualTo("Request exceeded allowed number of files! Permitted number of files is: 3!");
     }
 
     public void testMultipartRequestMaxFileSize() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest();
-        req.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        req.setMethod("post");
-        req.addHeader("Content-type", "multipart/form-data; boundary=---1234");
+        request.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        request.setMethod("post");
+        request.addHeader("Content-type", "multipart/form-data; boundary=---1234");
 
-        // inspired by the unit tests for jakarta commons fileupload
-        String content = ("-----1234\r\n" +
-            "Content-Disposition: form-data; name=\"file\"; filename=\"deleteme.txt\"\r\n" +
-            "Content-Type: text/html\r\n" +
-            "\r\n" +
-            "Unit test of ActionFileUploadInterceptor" +
-            "\r\n" +
-            "-----1234--\r\n");
-        req.setContent(content.getBytes(StandardCharsets.US_ASCII));
+        // inspired by the unit tests for Jakarta Commons FileUpload
+        String content = ("""
+                -----1234\r
+                Content-Disposition: form-data; name="file"; filename="deleteme.txt"\r
+                Content-Type: text/html\r
+                \r
+                Unit test of ActionFileUploadInterceptor\r
+                -----1234--\r
+                """);
+        request.setContent(content.getBytes(StandardCharsets.US_ASCII));
 
         MyFileUploadAction action = container.inject(MyFileUploadAction.class);
 
@@ -418,45 +376,41 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
         ActionContext.getContext()
-            .withServletRequest(createMultipartRequestMaxFileSize(req));
+                .withServletRequest(createMultipartRequestMaxFileSize());
 
         interceptor.intercept(mai);
 
-        assertTrue(action.hasActionErrors());
+        assertThat(action.hasActionErrors()).isTrue();
 
-        Collection<String> errors = action.getActionErrors();
-        assertEquals(1, errors.size());
-        String msg = errors.iterator().next();
-        assertEquals(
-            "File in request exceeded allowed file size limit! Max file size allowed is: 10 but file deleteme.txt was: 40!",
-            msg);
+        assertThat(action.getActionErrors())
+                .hasSize(1)
+                .first()
+                .isEqualTo("File deleteme.txt assigned to file exceeded allowed size limit! Max size allowed is: 10 but file was: 11!");
     }
 
     public void testMultipartRequestMaxStringLength() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest();
-        req.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        req.setMethod("post");
-        req.addHeader("Content-type", "multipart/form-data; boundary=---1234");
+        request.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        request.setMethod("post");
+        request.addHeader("Content-type", "multipart/form-data; boundary=---1234");
 
-        // inspired by the unit tests for jakarta commons fileupload
-        String content = ("-----1234\r\n" +
-            "Content-Disposition: form-data; name=\"file\"; filename=\"deleteme.txt\"\r\n" +
-            "Content-Type: text/html\r\n" +
-            "\r\n" +
-            "Unit test of ActionFileUploadInterceptor" +
-            "\r\n" +
-            "-----1234\r\n" +
-            "Content-Disposition: form-data; name=\"normalFormField1\"\r\n" +
-            "\r\n" +
-            "it works" +
-            "\r\n" +
-            "-----1234\r\n" +
-            "Content-Disposition: form-data; name=\"normalFormField2\"\r\n" +
-            "\r\n" +
-            "long string should not work" +
-            "\r\n" +
-            "-----1234--\r\n");
-        req.setContent(content.getBytes(StandardCharsets.US_ASCII));
+        // inspired by the unit tests for Jakarta Commons FileUpload
+        String content = ("""
+                -----1234\r
+                Content-Disposition: form-data; name="file"; filename="deleteme.txt"\r
+                Content-Type: text/html\r
+                \r
+                Unit test of ActionFileUploadInterceptor\r
+                -----1234\r
+                Content-Disposition: form-data; name="normalFormField1"\r
+                \r
+                it works\r
+                -----1234\r
+                Content-Disposition: form-data; name="normalFormField2"\r
+                \r
+                long string should not work\r
+                -----1234--\r
+                """);
+        request.setContent(content.getBytes(StandardCharsets.US_ASCII));
 
         MyFileUploadAction action = container.inject(MyFileUploadAction.class);
 
@@ -465,35 +419,32 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
         ActionContext.getContext()
-            .withServletRequest(createMultipartRequestMaxStringLength(req));
+                .withServletRequest(createMultipartRequestMaxStringLength());
 
         interceptor.intercept(mai);
 
-        assertTrue(action.hasActionErrors());
+        assertThat(action.hasActionErrors()).isTrue();
 
-        Collection<String> errors = action.getActionErrors();
-        assertEquals(1, errors.size());
-        String msg = errors.iterator().next();
-        assertEquals(
-            "The request parameter \"normalFormField2\" was too long.  Max length allowed is 20, but found 27!",
-            msg);
+        assertThat(action.getActionErrors())
+                .hasSize(1)
+                .first()
+                .isEqualTo("The request parameter \"normalFormField2\" was too long. Max length allowed is 20, but found 27!");
     }
 
     public void testMultipartRequestLocalizedError() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest();
-        req.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        req.setMethod("post");
-        req.addHeader("Content-type", "multipart/form-data; boundary=---1234");
+        request.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        request.setMethod("post");
+        request.addHeader("Content-type", "multipart/form-data; boundary=---1234");
 
-        // inspired by the unit tests for jakarta commons fileupload
-        String content = ("-----1234\r\n" +
-            "Content-Disposition: form-data; name=\"file\"; filename=\"deleteme.txt\"\r\n" +
-            "Content-Type: text/html\r\n" +
-            "\r\n" +
-            "Unit test of ActionFileUploadInterceptor" +
-            "\r\n" +
-            "-----1234--\r\n");
-        req.setContent(content.getBytes(StandardCharsets.US_ASCII));
+        String content = ("""
+                -----1234\r
+                Content-Disposition: form-data; name="file"; filename="deleteme.txt"\r
+                Content-Type: text/html\r
+                \r
+                Unit test of ActionFileUploadInterceptor\r
+                -----1234--\r
+                """);
+        request.setContent(content.getBytes(StandardCharsets.US_ASCII));
 
         MyFileUploadAction action = container.inject(MyFileUploadAction.class);
 
@@ -502,77 +453,121 @@ public class ActionFileUploadInterceptorTest extends StrutsInternalTestCase {
         mai.setResultCode("success");
         mai.setInvocationContext(ActionContext.getContext());
         ActionContext.getContext()
-            .withLocale(Locale.GERMAN)
-            .withServletRequest(createMultipartRequestMaxSize(req, 10));
+                .withLocale(Locale.GERMAN)
+                .withServletRequest(createMultipartRequestMaxSize(10));
 
         interceptor.intercept(mai);
 
-        assertTrue(action.hasActionErrors());
+        assertThat(action.hasActionErrors()).isTrue();
 
-        Collection<String> errors = action.getActionErrors();
-        assertEquals(1, errors.size());
-        String msg = errors.iterator().next();
-        // the error message should contain at least this test
-        assertTrue(msg.startsWith("Der Request übertraf die maximal erlaubte Größe"));
+        assertThat(action.getActionErrors())
+                .hasSize(1)
+                .first()
+                .asString()
+                .startsWith("Der Request übertraf die maximal erlaubte Größe");
     }
 
     private String encodeTextFile(String filename, String contentType, String content) {
-        return "\r\n" +
-            "--" +
-            "simple boundary" +
-            "\r\n" +
-            "Content-Disposition: form-data; name=\"" +
-            "file" +
-            "\"; filename=\"" +
-            filename +
-            "\r\n" +
-            "Content-Type: " +
-            contentType +
-            "\r\n" +
-            "\r\n" +
-            content;
+        return endLine +
+                "--" + boundary +
+                endLine +
+                "Content-Disposition: form-data; name=\"file\"; filename=\"" + filename + "\"" +
+                endLine +
+                "Content-Type: " + contentType +
+                endLine +
+                endLine +
+                content;
     }
 
-    private MultiPartRequestWrapper createMultipartRequestMaxFileSize(HttpServletRequest req) {
-        return createMultipartRequest(req, -1, 10, -1, -1);
+    private MultiPartRequestWrapper createMultipartRequestMaxFileSize() {
+        return createMultipartRequest(-1, 10, -1, -1);
     }
 
-    private MultiPartRequestWrapper createMultipartRequestMaxFiles(HttpServletRequest req) {
-        return createMultipartRequest(req, -1, -1, 3, -1);
+    private MultiPartRequestWrapper createMultipartRequestMaxFiles() {
+        return createMultipartRequest(-1, -1, 3, -1);
     }
 
-    private MultiPartRequestWrapper createMultipartRequestMaxSize(HttpServletRequest req, int maxsize) {
-        return createMultipartRequest(req, maxsize, -1, -1, -1);
+    private MultiPartRequestWrapper createMultipartRequestMaxSize(int maxsize) {
+        return createMultipartRequest(maxsize, -1, -1, -1);
     }
 
-    private MultiPartRequestWrapper createMultipartRequestMaxStringLength(HttpServletRequest req) {
-        return createMultipartRequest(req, -1, -1, -1, 20);
+    private MultiPartRequestWrapper createMultipartRequestMaxStringLength() {
+        return createMultipartRequest(-1, -1, -1, 20);
     }
 
-    private MultiPartRequestWrapper createMultipartRequest(HttpServletRequest req, int maxsize, int maxfilesize, int maxfiles, int maxStringLength) {
-
+    private MultiPartRequestWrapper createMultipartRequest(int maxsize, int maxfilesize, int maxfiles, int maxStringLength) {
         JakartaMultiPartRequest jak = new JakartaMultiPartRequest();
         jak.setMaxSize(String.valueOf(maxsize));
         jak.setMaxFileSize(String.valueOf(maxfilesize));
         jak.setMaxFiles(String.valueOf(maxfiles));
         jak.setMaxStringLength(String.valueOf(maxStringLength));
-        return new MultiPartRequestWrapper(jak, req, tempDir.getAbsolutePath(), new DefaultLocaleProvider());
+        jak.setDefaultEncoding(StandardCharsets.UTF_8.name());
+
+        return new MultiPartRequestWrapper(jak, request, tempDir.getAbsolutePath(), new DefaultLocaleProvider());
     }
 
     protected void setUp() throws Exception {
         super.setUp();
-
+        request = new MockHttpServletRequest();
         interceptor = new ActionFileUploadInterceptor();
         container.inject(interceptor);
         tempDir = File.createTempFile("struts", "fileupload");
-        tempDir.delete();
-        tempDir.mkdirs();
+        assertThat(tempDir.delete()).isTrue();
+        assertThat(tempDir.mkdirs()).isTrue();
     }
 
     protected void tearDown() throws Exception {
-        tempDir.delete();
         interceptor.destroy();
         super.tearDown();
+    }
+
+    private UploadedFile createTestFile(File content) {
+        return new UploadedFile() {
+            @Override
+            public Long length() {
+                return 0L;
+            }
+
+            @Override
+            public String getName() {
+                return "";
+            }
+
+            @Override
+            public boolean isFile() {
+                return false;
+            }
+
+            @Override
+            public boolean delete() {
+                return false;
+            }
+
+            @Override
+            public String getAbsolutePath() {
+                return null;
+            }
+
+            @Override
+            public File getContent() {
+                return content;
+            }
+
+            @Override
+            public String getOriginalName() {
+                return null;
+            }
+
+            @Override
+            public String getContentType() {
+                return null;
+            }
+
+            @Override
+            public String getInputName() {
+                return null;
+            }
+        };
     }
 
     public static class MyFileUploadAction extends ActionSupport implements UploadedFilesAware {

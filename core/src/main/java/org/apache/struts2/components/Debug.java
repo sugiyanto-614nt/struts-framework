@@ -18,21 +18,22 @@
  */
 package org.apache.struts2.components;
 
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.util.ValueStack;
-import com.opensymphony.xwork2.util.reflection.ReflectionProvider;
-
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import java.io.Writer;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.struts2.dispatcher.PrepareOperations;
-import org.apache.struts2.views.annotations.StrutsTag;
 import org.apache.struts2.StrutsException;
+import org.apache.struts2.dispatcher.PrepareOperations;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.ognl.ThreadAllowlist;
+import org.apache.struts2.util.CompoundRoot;
+import org.apache.struts2.util.ValueStack;
+import org.apache.struts2.util.reflection.ReflectionProvider;
+import org.apache.struts2.views.annotations.StrutsTag;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 @StrutsTag(name="debug", tldTagClass="org.apache.struts2.views.jsp.ui.DebugTag",
         description="Prints debugging information (Only if 'struts.devMode' is enabled)")
@@ -41,6 +42,7 @@ public class Debug extends UIBean {
 
     protected ReflectionProvider reflectionProvider;
 
+    private ThreadAllowlist threadAllowlist;
 
     public Debug(ValueStack stack, HttpServletRequest request, HttpServletResponse response) {
         super(stack, request, response);
@@ -49,6 +51,11 @@ public class Debug extends UIBean {
     @Inject
     public void setReflectionProvider(ReflectionProvider prov) {
         this.reflectionProvider = prov;
+    }
+
+    @Inject
+    public void setThreadAllowlist(ThreadAllowlist threadAllowlist) {
+        this.threadAllowlist = threadAllowlist;
     }
 
     protected String getDefaultTemplate() {
@@ -60,22 +67,33 @@ public class Debug extends UIBean {
 
         if (showDebug()) {
             ValueStack stack = getStack();
-            Iterator iter = stack.getRoot().iterator();
-            List stackValues = new ArrayList(stack.getRoot().size());
+            allowList(stack.getRoot());
+
+            Iterator<Object> iter = stack.getRoot().iterator();
+            List<Object> stackValues = new ArrayList<>(stack.getRoot().size());
             while (iter.hasNext()) {
                 Object o = iter.next();
-                Map values;
+                Map<String, Object> values;
                 try {
                     values = reflectionProvider.getBeanMap(o);
                 } catch (Exception e) {
                     throw new StrutsException("Caught an exception while getting the property values of " + o, e);
                 }
+                allowListClass(o);
                 stackValues.add(new DebugMapEntry(o.getClass().getName(), values));
             }
 
             addParameter("stackValues", stackValues);
         }
         return result;
+    }
+
+    private void allowList(CompoundRoot root) {
+        root.forEach(this::allowListClass);
+    }
+
+    private void allowListClass(Object o) {
+        threadAllowlist.allowClassHierarchy(o.getClass());
     }
 
     @Override
@@ -92,23 +110,26 @@ public class Debug extends UIBean {
         return (devMode || Boolean.TRUE == PrepareOperations.getDevModeOverride());
     }
 
-    private static class DebugMapEntry implements Map.Entry {
-        private Object key;
+    private static class DebugMapEntry implements Map.Entry<String, Object> {
+        private final String key;
         private Object value;
 
-        DebugMapEntry(Object key, Object value) {
+        DebugMapEntry(String key, Object value) {
             this.key = key;
             this.value = value;
         }
 
-        public Object getKey() {
+        @Override
+        public String getKey() {
             return key;
         }
 
+        @Override
         public Object getValue() {
             return value;
         }
 
+        @Override
         public Object setValue(Object newVal) {
             Object oldVal = value;
             value = newVal;

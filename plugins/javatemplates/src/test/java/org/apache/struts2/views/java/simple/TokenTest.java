@@ -20,7 +20,7 @@
  */
 package org.apache.struts2.views.java.simple;
 
-import com.opensymphony.xwork2.ActionContext;
+import org.apache.struts2.ActionContext;
 import org.apache.struts2.components.Token;
 import org.apache.struts2.components.UIBean;
 
@@ -35,7 +35,7 @@ public class TokenTest extends AbstractTest {
         tag.setValue("val1");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
 

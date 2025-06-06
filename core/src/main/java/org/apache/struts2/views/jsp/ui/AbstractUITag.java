@@ -18,11 +18,11 @@
  */
 package org.apache.struts2.views.jsp.ui;
 
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.tagext.DynamicAttributes;
 import org.apache.struts2.components.UIBean;
 import org.apache.struts2.views.jsp.ComponentTagSupport;
 
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.tagext.DynamicAttributes;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -134,14 +134,6 @@ public abstract class AbstractUITag extends ComponentTagSupport implements Dynam
     }
 
     public void setCssClass(String cssClass) {
-        this.cssClass = cssClass;
-    }
-
-    /**
-     * @deprecated Use {@link #setCssClass(String)} instead
-     */
-    @Deprecated
-    public void setClass(String cssClass) {
         this.cssClass = cssClass;
     }
 
@@ -269,10 +261,12 @@ public abstract class AbstractUITag extends ComponentTagSupport implements Dynam
         this.onchange = onchange;
     }
 
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltip(String tooltip) {
         this.tooltip = tooltip;
     }
 
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipConfig(String tooltipConfig) {
         this.tooltipConfig = tooltipConfig;
     }
@@ -285,18 +279,22 @@ public abstract class AbstractUITag extends ComponentTagSupport implements Dynam
         this.key = key;
     }
 
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setJavascriptTooltip(String javascriptTooltip) {
         this.javascriptTooltip = javascriptTooltip;
     }
 
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipCssClass(String tooltipCssClass) {
         this.tooltipCssClass = tooltipCssClass;
     }
 
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipDelay(String tooltipDelay) {
         this.tooltipDelay = tooltipDelay;
     }
 
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipIconPath(String tooltipIconPath) {
         this.tooltipIconPath = tooltipIconPath;
     }
@@ -310,17 +308,17 @@ public abstract class AbstractUITag extends ComponentTagSupport implements Dynam
         dynamicAttributes.put(localName, String.valueOf(value));
     }
 
-    @Override
     /**
      * Must declare the setter at the descendant Tag class level in order for the tag handler to locate the method.
      */
+    @Override
     public void setPerformClearTagStateForTagPoolingServers(boolean performClearTagStateForTagPoolingServers) {
         super.setPerformClearTagStateForTagPoolingServers(performClearTagStateForTagPoolingServers);
     }
 
     @Override
     protected void clearTagStateForTagPoolingServers() {
-       if (getPerformClearTagStateForTagPoolingServers() == false) {
+       if (!getPerformClearTagStateForTagPoolingServers()) {
             return;  // If flag is false (default setting), do not perform any state clearing.
         }
         super.clearTagStateForTagPoolingServers();

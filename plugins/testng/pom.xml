@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.struts</groupId>
         <artifactId>struts2-plugins</artifactId>
-        <version>6.7.0-SNAPSHOT</version>
+        <version>7.0.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>struts2-testng-plugin</artifactId>
@@ -35,6 +35,7 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

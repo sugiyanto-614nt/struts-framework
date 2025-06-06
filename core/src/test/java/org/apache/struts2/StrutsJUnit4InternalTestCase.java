@@ -18,8 +18,6 @@
  */
 package org.apache.struts2;
 
-import com.opensymphony.xwork2.ActionProxyFactory;
-import com.opensymphony.xwork2.XWorkJUnit4TestCase;
 import org.apache.struts2.dispatcher.Dispatcher;
 import org.apache.struts2.util.StrutsTestCaseHelper;
 import org.apache.struts2.views.jsp.StrutsMockServletContext;

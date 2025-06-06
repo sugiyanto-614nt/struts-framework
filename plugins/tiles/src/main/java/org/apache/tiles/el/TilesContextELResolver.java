@@ -22,8 +22,8 @@ import org.apache.tiles.core.util.CombinedBeanInfo;
 import org.apache.tiles.request.ApplicationContext;
 import org.apache.tiles.request.Request;
 
-import javax.el.ELContext;
-import javax.el.ELResolver;
+import jakarta.el.ELContext;
+import jakarta.el.ELResolver;
 import java.beans.FeatureDescriptor;
 import java.util.Iterator;
 
@@ -70,7 +70,7 @@ public class TilesContextELResolver extends ELResolver {
     /**
      * {@inheritDoc}
      */
-    @Override
+    // @Override // To allow compilation with Maven profile jakartaee11 where this interface method does not exist
     public Iterator<FeatureDescriptor> getFeatureDescriptors(ELContext context,
                                                              Object base) {
         // only resolve at the root of the context

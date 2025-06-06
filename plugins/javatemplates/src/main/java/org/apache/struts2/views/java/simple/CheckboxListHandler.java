@@ -18,7 +18,7 @@
  */
 package org.apache.struts2.views.java.simple;
 
-import com.opensymphony.xwork2.util.ValueStack;
+import org.apache.struts2.util.ValueStack;
 
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -68,14 +68,15 @@ public class CheckboxListHandler extends AbstractTagHandler implements TagGenera
                         .addIfTrue("checked", isChecked(params, itemKeyStr))
                         .addIfTrue("readonly", params.get("readonly")).addIfTrue("disabled", disabled)
                         .addIfExists("tabindex", params.get("tabindex"))
-                        .addIfExists("id", id + "-" + Integer.toString(cnt));
+                        .addIfExists("id", id + "-" + Integer.toString(cnt))
+                        .addIfExists("class", params.get("cssClass"))
+                        .addIfExists("style", params.get("cssStyle"));
                 start("input", a);
                 end("input");
 
                 // Label section
                 a = new Attributes();
-                a.add("for", id + "-" + Integer.toString(cnt)).addIfExists("class", params.get("cssClass"))
-                        .addIfExists("style", params.get("cssStyle"));
+                a.add("for", id + "-" + Integer.toString(cnt)).add("class", "checkboxLabel");
                 super.start("label", a);
                 if (StringUtils.isNotEmpty(itemValueStr))
                     characters(itemValueStr);
@@ -103,13 +104,13 @@ public class CheckboxListHandler extends AbstractTagHandler implements TagGenera
     /**
      * It's set to true if the nameValue (the value associated with the name
      * which is typically set in the action is equal to the current key value.
-     * 
+     *
      * @param params
      *            the params
-     * 
+     *
      * @param itemKeyStr
      *            the item key str
-     * 
+     *
      * @return the boolean
      */
     private Boolean isChecked(Map<String, Object> params, String itemKeyStr) {

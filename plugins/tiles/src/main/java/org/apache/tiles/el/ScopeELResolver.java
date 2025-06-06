@@ -20,8 +20,8 @@ package org.apache.tiles.el;
 
 import org.apache.tiles.request.Request;
 
-import javax.el.ELContext;
-import javax.el.ELResolver;
+import jakarta.el.ELContext;
+import jakarta.el.ELResolver;
 import java.beans.FeatureDescriptor;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,7 +57,7 @@ public class ScopeELResolver extends ELResolver {
     /**
      * {@inheritDoc}
      */
-    @Override
+    // @Override // To allow compilation with Maven profile jakartaee11 where this interface method does not exist
     public Iterator<FeatureDescriptor> getFeatureDescriptors(ELContext context, Object base) {
         if (base != null) {
             return Collections.emptyIterator();
