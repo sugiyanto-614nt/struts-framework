@@ -25,6 +25,7 @@ import org.apache.struts2.config.entities.ResultConfig;
 import org.apache.struts2.config.providers.XmlConfigurationProvider;
 import org.apache.struts2.dispatcher.HttpParameters;
 import org.apache.struts2.interceptor.Interceptor;
+import org.apache.struts2.interceptor.WithLazyParams;
 import org.apache.struts2.mock.MockActionProxy;
 import org.apache.struts2.mock.MockInterceptor;
 import org.apache.struts2.mock.MockResult;
@@ -384,6 +385,44 @@ public class DefaultActionInvocationTest extends XWorkTestCase {
         assertEquals("this is blah", action.getName());
     }
 
+    /**
+     * Test for WW-5586: WithLazyParams interceptors can be configured in interceptor stacks
+     * with both static parameters and dynamic expression parameters.
+     */
+    public void testInvokeWithLazyParamsStackConfiguration() throws Exception {
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("blah", "dynamic value");
+
+        ActionContext extraContext = ActionContext.of()
+                .withParameters(HttpParameters.create(params).build());
+
+        DefaultActionInvocation defaultActionInvocation = new DefaultActionInvocation(extraContext.getContextMap(), true);
+        container.inject(defaultActionInvocation);
+
+        ActionProxy actionProxy = actionProxyFactory.createActionProxy("", "LazyFooWithStackParams", null, extraContext.getContextMap());
+        defaultActionInvocation.init(actionProxy);
+
+        // Verify InterceptorMapping has params before invocation (WW-5587)
+        List<InterceptorMapping> interceptors = actionProxy.getConfig().getInterceptors();
+        InterceptorMapping lazyInterceptor = interceptors.stream()
+                .filter(m -> m.getInterceptor() instanceof WithLazyParams)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("WithLazyParams interceptor not found"));
+
+        assertFalse("WithLazyParams interceptor should have params in InterceptorMapping",
+                lazyInterceptor.getParams().isEmpty());
+
+        defaultActionInvocation.invoke();
+
+        SimpleAction action = (SimpleAction) defaultActionInvocation.getAction();
+
+        // Verify expression parameter is evaluated at invocation time
+        assertEquals("dynamic value", action.getName());
+
+        // Verify static parameter is set and not evaluated as expression
+        assertEquals("static value", action.getBlah());
+    }
+
     public void testInvokeWithAsyncManager() throws Exception {
         DefaultActionInvocation dai = new DefaultActionInvocation(new HashMap<>(), false);
         dai.stack = container.getInstance(ValueStackFactory.class).createValueStack();
@@ -458,7 +497,7 @@ public class DefaultActionInvocationTest extends XWorkTestCase {
 
     public void testActionEventListener() throws Exception {
         ActionProxy actionProxy = actionProxyFactory.createActionProxy("",
-            "ExceptionFoo", "exceptionMethod", new HashMap<>());
+                "ExceptionFoo", "exceptionMethod", new HashMap<>());
         DefaultActionInvocation defaultActionInvocation = (DefaultActionInvocation) actionProxy.getInvocation();
 
         SimpleActionEventListener actionEventListener = new SimpleActionEventListener("prepared", "exceptionHandled");

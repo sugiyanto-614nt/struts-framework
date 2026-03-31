@@ -114,6 +114,9 @@
           class="org.apache.struts2.conversion.StrutsTypeConverterCreator"/>
     <bean type="org.apache.struts2.conversion.TypeConverterHolder" name="struts"
           class="org.apache.struts2.conversion.StrutsTypeConverterHolder"/>
+    <bean type="org.apache.struts2.conversion.UserConversionPropertiesProvider" name="struts"
+          class="org.apache.struts2.conversion.StrutsConversionPropertiesProcessor"/>
+    <bean class="org.apache.struts2.conversion.UserConversionPropertiesProcessor" scope="singleton"/>
 
     <bean class="org.apache.struts2.conversion.impl.XWorkBasicConverter"/>
 
@@ -237,6 +240,10 @@
           class="org.apache.struts2.ognl.DefaultOgnlExpressionCacheFactory" scope="singleton"/>
     <bean type="org.apache.struts2.ognl.BeanInfoCacheFactory" name="struts"
           class="org.apache.struts2.ognl.DefaultOgnlBeanInfoCacheFactory" scope="singleton"/>
+    <bean type="org.apache.struts2.ognl.ProxyCacheFactory" name="struts"
+          class="org.apache.struts2.ognl.StrutsProxyCacheFactory" scope="singleton"/>
+    <bean type="org.apache.struts2.util.ProxyService" name="struts"
+          class="org.apache.struts2.util.StrutsProxyService" scope="singleton"/>
 
     <bean type="org.apache.struts2.url.QueryStringBuilder" name="strutsQueryStringBuilder"
           class="org.apache.struts2.url.StrutsQueryStringBuilder" scope="singleton"/>
@@ -249,5 +256,26 @@
 
     <bean type="org.apache.struts2.interceptor.exec.ExecutorProvider" name="struts"
           class="org.apache.struts2.interceptor.exec.StrutsExecutorProvider"/>
+
+    <bean type="org.apache.struts2.interceptor.csp.CspNonceReader" name="struts"
+          class="org.apache.struts2.interceptor.csp.StrutsCspNonceReader"/>
+
+    <!-- WW-5537: InternalDestroyable beans for automatic cleanup during undeploy -->
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="componentCache"
+          class="org.apache.struts2.dispatcher.ComponentCacheDestroyable"/>
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="compoundRootAccessor"
+          class="org.apache.struts2.ognl.accessor.CompoundRootAccessor"/>
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="defaultFileManager"
+          class="org.apache.struts2.util.fs.DefaultFileManager"/>
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="scopeInterceptorCache"
+          class="org.apache.struts2.dispatcher.ScopeInterceptorCacheDestroyable"/>
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="ognlCache"
+          class="org.apache.struts2.dispatcher.OgnlCacheDestroyable"/>
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="finalizableReferenceQueue"
+          class="org.apache.struts2.dispatcher.FinalizableReferenceQueueDestroyable"/>
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="freemarkerCache"
+          class="org.apache.struts2.dispatcher.FreemarkerCacheDestroyable"/>
+    <bean type="org.apache.struts2.dispatcher.InternalDestroyable" name="debugUtilsCache"
+          class="org.apache.struts2.dispatcher.DebugUtilsCacheDestroyable"/>
 
 </struts>

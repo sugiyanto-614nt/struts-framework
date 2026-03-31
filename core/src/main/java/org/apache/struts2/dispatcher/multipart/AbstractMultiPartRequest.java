@@ -18,13 +18,14 @@
  */
 package org.apache.struts2.dispatcher.multipart;
 
-import org.apache.struts2.inject.Inject;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.fileupload2.core.DiskFileItemFactory;
 import org.apache.commons.fileupload2.core.FileUploadByteCountLimitException;
 import org.apache.commons.fileupload2.core.FileUploadContentTypeException;
 import org.apache.commons.fileupload2.core.FileUploadException;
 import org.apache.commons.fileupload2.core.FileUploadFileCountLimitException;
 import org.apache.commons.fileupload2.core.FileUploadSizeException;
+import org.apache.commons.fileupload2.core.RequestContext;
 import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletDiskFileUpload;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -32,9 +33,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.struts2.StrutsConstants;
 import org.apache.struts2.dispatcher.LocalizedMessage;
+import org.apache.struts2.inject.Inject;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,6 +46,9 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
+import static org.apache.commons.lang3.StringUtils.normalizeSpace;
 
 /**
  * Abstract class with some helper methods, it should be used
@@ -187,31 +194,49 @@ public abstract class AbstractMultiPartRequest implements MultiPartRequest {
      * @param charset used charset from incoming request
      * @param saveDir a temporary folder to store uploaded files (not always needed)
      */
-    protected abstract JakartaServletDiskFileUpload createJakartaFileUpload(Charset charset, Path saveDir);
+    protected JakartaServletDiskFileUpload createJakartaFileUpload(Charset charset, Path saveDir) {
+        DiskFileItemFactory.Builder builder = DiskFileItemFactory.builder();
+
+        LOG.debug("Using file save directory: {}", saveDir);
+        builder.setPath(saveDir);
+
+        LOG.debug("Sets buffer size: {}", bufferSize);
+        builder.setBufferSize(bufferSize);
+
+        LOG.debug("Using charset: {}", charset);
+        builder.setCharset(charset);
+
+        DiskFileItemFactory factory = builder.get();
+        return new JakartaServletDiskFileUpload(factory);
+    }
 
     protected JakartaServletDiskFileUpload prepareServletFileUpload(Charset charset, Path saveDir) {
         JakartaServletDiskFileUpload servletFileUpload = createJakartaFileUpload(charset, saveDir);
 
         if (maxSize != null) {
             LOG.debug("Applies max size: {} to file upload request", maxSize);
-            servletFileUpload.setSizeMax(maxSize);
+            servletFileUpload.setMaxSize(maxSize);
         }
         if (maxFiles != null) {
             LOG.debug("Applies max files number: {} to file upload request", maxFiles);
-            servletFileUpload.setFileCountMax(maxFiles);
+            servletFileUpload.setMaxFileCount(maxFiles);
         }
         if (maxFileSize != null) {
             LOG.debug("Applies max size of single file: {} to file upload request", maxFileSize);
-            servletFileUpload.setFileSizeMax(maxFileSize);
+            servletFileUpload.setMaxFileSize(maxFileSize);
         }
         return servletFileUpload;
+    }
+
+    protected RequestContext createRequestContext(HttpServletRequest request) {
+        return new StrutsRequestContext(request);
     }
 
     protected boolean exceedsMaxStringLength(String fieldName, String fieldValue) {
         if (maxStringLength != null && fieldValue.length() > maxStringLength) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Form field: {} of size: {} bytes exceeds limit of: {}.",
-                        sanitizeNewlines(fieldName), fieldValue.length(), maxStringLength);
+                        normalizeSpace(fieldName), fieldValue.length(), maxStringLength);
             }
             LocalizedMessage localizedMessage = new LocalizedMessage(this.getClass(),
                     STRUTS_MESSAGES_UPLOAD_ERROR_PARAMETER_TOO_LONG_KEY, null,
@@ -234,7 +259,7 @@ public abstract class AbstractMultiPartRequest implements MultiPartRequest {
         try {
             processUpload(request, saveDir);
         } catch (FileUploadException e) {
-            LOG.debug("Error parsing the multi-part request!", e);
+            LOG.warn("Error parsing the multi-part request!", e);
             Class<? extends Throwable> exClass = FileUploadException.class;
             Object[] args = new Object[]{};
 
@@ -257,7 +282,7 @@ public abstract class AbstractMultiPartRequest implements MultiPartRequest {
                 errors.add(errorMessage);
             }
         } catch (IOException e) {
-            LOG.debug("Unable to parse request", e);
+            LOG.warn("Unable to parse request", e);
             LocalizedMessage errorMessage = buildErrorMessage(e.getClass(), e.getMessage(), new Object[]{});
             if (!errors.contains(errorMessage)) {
                 errors.add(errorMessage);
@@ -288,13 +313,6 @@ public abstract class AbstractMultiPartRequest implements MultiPartRequest {
         return FilenameUtils.getName(originalFileName);
     }
 
-    /**
-     * @deprecated since 7.0.1, use {@link StringUtils#normalizeSpace(String)} instead
-     */
-    @Deprecated
-    protected String sanitizeNewlines(String before) {
-        return before.replaceAll("\\R", "_");
-    }
 
     /* (non-Javadoc)
      * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getErrors()
@@ -384,6 +402,61 @@ public abstract class AbstractMultiPartRequest implements MultiPartRequest {
         return values.toArray(new String[0]);
     }
 
+    /**
+     * Creates a secure temporary file in the specified directory using UUID-based naming.
+     * This method ensures files are created in a controlled location rather than the
+     * system temporary directory, reducing security risks.
+     *
+     * @param fileName the original filename for logging purposes
+     * @param location the directory where the temporary file should be created
+     * @return a new temporary file in the specified location
+     */
+    protected File createTemporaryFile(String fileName, Path location) {
+        String uid = UUID.randomUUID().toString().replace("-", "_");
+        File file = location.resolve("upload_" + uid + ".tmp").toFile();
+        LOG.debug("Creating temporary file: {} (originally: {})", file.getName(), fileName);
+        return file;
+    }
+
+    /**
+     * Validates that an uploaded file is not empty (0 bytes) and adds an error if it is.
+     *
+     * <p>Empty file uploads are rejected as they are not considered valid uploads.
+     * This validation ensures consistent behavior across all multipart implementations
+     * and provides proper user feedback when empty files are uploaded.</p>
+     *
+     * <p>When an empty file is detected:</p>
+     * <ul>
+     *   <li>A debug log message is written with field name and filename</li>
+     *   <li>A localized error message is created and added to the errors list</li>
+     *   <li>The method returns true to indicate the file should be rejected</li>
+     * </ul>
+     *
+     * @param fileSize  the size of the uploaded file in bytes
+     * @param fileName  the original filename of the uploaded file
+     * @param fieldName the form field name containing the file upload
+     * @return true if the file is empty and should be rejected, false otherwise
+     * @see #buildErrorMessage(Class, String, Object[])
+     */
+    protected boolean rejectEmptyFile(long fileSize, String fileName, String fieldName) {
+        if (fileSize == 0) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Rejecting empty file upload for field: {} with filename: {}",
+                        normalizeSpace(fieldName), normalizeSpace(fileName));
+            }
+            LocalizedMessage errorMessage = buildErrorMessage(
+                    IllegalArgumentException.class,
+                    "Empty files are not allowed",
+                    new Object[]{fileName, fieldName}
+            );
+            if (!errors.contains(errorMessage)) {
+                errors.add(errorMessage);
+            }
+            return true;
+        }
+        return false;
+    }
+
     /* (non-Javadoc)
      * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#cleanUp()
      */
@@ -409,4 +482,18 @@ public abstract class AbstractMultiPartRequest implements MultiPartRequest {
         }
     }
 
+    /**
+     * Delete file if exists, reports warning if file cannot be deleted
+     * 
+     * @param filePath a file to delete
+     */
+    protected void deleteFile(Path filePath) {
+        if (Files.exists(filePath)) {
+            try {
+                Files.delete(filePath);
+            } catch (IOException e) {
+                LOG.warn("Failed to delete file: {}", filePath, e);
+            }
+        }
+    }
 }

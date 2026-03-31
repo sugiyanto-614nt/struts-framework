@@ -28,16 +28,16 @@ import org.apache.struts2.convention.annotation.Result;
  */
 public class ActionLevelResultsNamesAction {
     @Action(results = {
-        @Result(name={"error", "input"}, location="error.jsp"),
-        @Result(name="success", location="/WEB-INF/location/namespace/action-success.jsp"),
-        @Result(name="failure", location="/WEB-INF/location/namespace/action-failure.jsp")
+            @Result(name = {"error", "input"}, location = "error.jsp"),
+            @Result(name = "success", location = "/WEB-INF/location/namespace/action-success.jsp"),
+            @Result(name = "failure", location = "/WEB-INF/location/namespace/action-failure.jsp")
     })
     public String execute() {
         return null;
     }
 
-    @Action(results = {
-        @Result(location="/WEB-INF/location/namespace/action-success.jsp")
+    @Action(value = "action-level-results-names-noname", results = {
+            @Result(location = "/WEB-INF/location/namespace/action-success.jsp")
     })
     public String noname() {
         return null;

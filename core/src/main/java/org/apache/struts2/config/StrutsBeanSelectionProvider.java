@@ -37,6 +37,7 @@ import org.apache.struts2.conversion.ConversionPropertiesProcessor;
 import org.apache.struts2.conversion.ObjectTypeDeterminer;
 import org.apache.struts2.conversion.TypeConverterCreator;
 import org.apache.struts2.conversion.TypeConverterHolder;
+import org.apache.struts2.conversion.UserConversionPropertiesProvider;
 import org.apache.struts2.conversion.impl.ArrayConverter;
 import org.apache.struts2.conversion.impl.CollectionConverter;
 import org.apache.struts2.conversion.impl.DateConverter;
@@ -55,10 +56,12 @@ import org.apache.struts2.factory.UnknownHandlerFactory;
 import org.apache.struts2.factory.ValidatorFactory;
 import org.apache.struts2.inject.ContainerBuilder;
 import org.apache.struts2.inject.Scope;
+import org.apache.struts2.interceptor.csp.CspNonceReader;
 import org.apache.struts2.interceptor.exec.ExecutorProvider;
 import org.apache.struts2.ognl.BeanInfoCacheFactory;
 import org.apache.struts2.ognl.ExpressionCacheFactory;
 import org.apache.struts2.ognl.OgnlGuard;
+import org.apache.struts2.ognl.ProxyCacheFactory;
 import org.apache.struts2.ognl.SecurityMemberAccess;
 import org.apache.struts2.ognl.accessor.RootAccessor;
 import org.apache.struts2.security.AcceptedPatternsChecker;
@@ -70,6 +73,7 @@ import org.apache.struts2.url.UrlDecoder;
 import org.apache.struts2.url.UrlEncoder;
 import org.apache.struts2.util.ContentTypeMatcher;
 import org.apache.struts2.util.PatternMatcher;
+import org.apache.struts2.util.ProxyService;
 import org.apache.struts2.util.TextParser;
 import org.apache.struts2.util.ValueStackFactory;
 import org.apache.struts2.util.location.LocatableProperties;
@@ -87,7 +91,7 @@ import org.apache.struts2.views.util.UrlHelper;
  *
  * <p>
  * The following is a list of the allowed extension points:
- *
+ * <p>
  * <!-- START SNIPPET: extensionPoints -->
  * <table border="1" summary="">
  *   <tr>
@@ -352,7 +356,7 @@ import org.apache.struts2.views.util.UrlHelper;
  *     <td>Provides access to resource bundles used to localise messages (since 2.5.11)</td>
  *   </tr>
  * </table>
- *
+ * <p>
  * <!-- END SNIPPET: extensionPoints -->
  *
  * <p>
@@ -404,6 +408,7 @@ public class StrutsBeanSelectionProvider extends AbstractBeanSelectionProvider {
         alias(ConversionAnnotationProcessor.class, StrutsConstants.STRUTS_CONVERTER_ANNOTATION_PROCESSOR, builder, props);
         alias(TypeConverterCreator.class, StrutsConstants.STRUTS_CONVERTER_CREATOR, builder, props);
         alias(TypeConverterHolder.class, StrutsConstants.STRUTS_CONVERTER_HOLDER, builder, props);
+        alias(UserConversionPropertiesProvider.class, StrutsConstants.STRUTS_CONVERTER_USER_PROPERTIES_PROVIDER, builder, props);
 
         alias(TextProvider.class, StrutsConstants.STRUTS_TEXT_PROVIDER, builder, props, Scope.PROTOTYPE);
         alias(TextProviderFactory.class, StrutsConstants.STRUTS_TEXT_PROVIDER_FACTORY, builder, props, Scope.PROTOTYPE);
@@ -439,6 +444,8 @@ public class StrutsBeanSelectionProvider extends AbstractBeanSelectionProvider {
 
         alias(ExpressionCacheFactory.class, StrutsConstants.STRUTS_OGNL_EXPRESSION_CACHE_FACTORY, builder, props, Scope.SINGLETON);
         alias(BeanInfoCacheFactory.class, StrutsConstants.STRUTS_OGNL_BEANINFO_CACHE_FACTORY, builder, props, Scope.SINGLETON);
+        alias(ProxyCacheFactory.class, StrutsConstants.STRUTS_PROXY_CACHE_FACTORY, builder, props, Scope.SINGLETON);
+        alias(ProxyService.class, StrutsConstants.STRUTS_PROXYSERVICE, builder, props, Scope.SINGLETON);
 
         alias(SecurityMemberAccess.class, StrutsConstants.STRUTS_MEMBER_ACCESS, builder, props, Scope.PROTOTYPE);
         alias(OgnlGuard.class, StrutsConstants.STRUTS_OGNL_GUARD, builder, props, Scope.SINGLETON);
@@ -449,6 +456,8 @@ public class StrutsBeanSelectionProvider extends AbstractBeanSelectionProvider {
         alias(UrlDecoder.class, StrutsConstants.STRUTS_URL_DECODER, builder, props, Scope.SINGLETON);
 
         alias(ExecutorProvider.class, StrutsConstants.STRUTS_EXECUTOR_PROVIDER, builder, props, Scope.SINGLETON);
+
+        alias(CspNonceReader.class, StrutsConstants.STRUTS_CSP_NONCE_READER, builder, props, Scope.SINGLETON);
 
         switchDevMode(props);
     }

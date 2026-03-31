@@ -18,6 +18,7 @@
  */
 package org.apache.struts2.convention;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.struts2.ActionContext;
 import org.apache.struts2.FileManager;
 import org.apache.struts2.FileManagerFactory;
@@ -406,7 +407,7 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
             if (ctx != null) {
                 classLoaderInterface = (ClassLoaderInterface) ctx.get(ClassLoaderInterface.CLASS_LOADER_INTERFACE);
             }
-            return ObjectUtils.defaultIfNull(classLoaderInterface, new ClassLoaderInterfaceDelegate(getClassLoader()));
+            return ObjectUtils.getIfNull(classLoaderInterface, new ClassLoaderInterfaceDelegate(getClassLoader()));
         }
     }
 
@@ -561,7 +562,17 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
     }
 
     /**
-     * Checks if provided class package is on the exclude list
+     * Checks if provided class package is on the exclude list.
+     * <p>
+     * WW-5594: For patterns ending with ".*", this method also checks if the package name
+     * equals the base pattern (without ".*"). This ensures that classes directly in the
+     * root package are excluded, not just classes in subpackages.
+     * <p>
+     * For example, pattern "org.apache.struts2.*" will exclude both:
+     * <ul>
+     *   <li>Classes in subpackages like "org.apache.struts2.dispatcher.SomeClass"</li>
+     *   <li>Classes directly in the root package like "org.apache.struts2.XWorkTestCase"</li>
+     * </ul>
      *
      * @param classPackageName name of class package
      * @return false if class package is on the {@link #excludePackages} list
@@ -574,6 +585,16 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
             Map<String, String> matchMap = new HashMap<>();
 
             for (String packageExclude : excludePackages) {
+                // WW-5594: For patterns ending with ".*", also check if package equals the base
+                // This handles root package exclusion (e.g., pattern "org.apache.struts2.*"
+                // should also exclude classes in package "org.apache.struts2")
+                if (packageExclude.endsWith(".*")) {
+                    String basePackage = packageExclude.substring(0, packageExclude.length() - 2);
+                    if (classPackageName.equals(basePackage)) {
+                        return false;
+                    }
+                }
+
                 int[] packagePattern = wildcardHelper.compilePattern(packageExclude);
                 if (wildcardHelper.match(matchMap, classPackageName, packagePattern)) {
                     return false;
@@ -647,7 +668,7 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
      * should be included in the package scan
      */
     protected Test<ClassFinder.ClassInfo> getActionClassTest() {
-        return new Test<ClassFinder.ClassInfo>() {
+        return new Test<>() {
             public boolean test(ClassFinder.ClassInfo classInfo) {
 
                 // Why do we call includeClassNameInActionScan here, when it's
@@ -661,8 +682,9 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
 
                 try {
                     return inPackage && (nameMatches || (checkImplementsAction && org.apache.struts2.action.Action.class.isAssignableFrom(classInfo.get())));
-                } catch (ClassNotFoundException ex) {
-                    LOG.error("Unable to load class [{}]", classInfo.getName(), ex);
+                } catch (ClassNotFoundException | NoClassDefFoundError ex) {
+                    LOG.error("Unable to load class [{}]. Perhaps it exists but certain dependencies are not available?",
+                            classInfo.getName(), ex);
                     return false;
                 }
             }
@@ -716,42 +738,28 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
 
                 // Verify that the annotations have no errors and also determine if the default action
                 // configuration should still be built or not.
-                Map<String, List<Action>> map = getActionAnnotations(actionClass);
-                Set<String> actionNames = new HashSet<>();
+                Map<String, List<Action>> actionAnnotationsByMethod = getActionAnnotations(actionClass);
                 boolean hasDefaultMethod = ReflectionTools.containsMethod(actionClass, DEFAULT_METHOD);
-                if (!map.containsKey(DEFAULT_METHOD)
-                        && hasDefaultMethod
-                        && actionAnnotation == null && actionsAnnotation == null
-                        && (alwaysMapExecute || map.isEmpty())) {
-                    boolean found = false;
-                    for (List<Action> actions : map.values()) {
-                        for (Action action : actions) {
 
-                            // Check if there are duplicate action names in the annotations.
-                            String actionName = action.value().equals(Action.DEFAULT_VALUE) ? defaultActionName : action.value();
-                            if (actionNames.contains(actionName)) {
-                                throw new ConfigurationException("The action class [" + actionClass +
-                                        "] contains two methods with an action name annotation whose value " +
-                                        "is the same (they both might be empty as well).");
-                            } else {
-                                actionNames.add(actionName);
-                            }
-
-                            // Check this annotation is the default action
-                            if (action.value().equals(Action.DEFAULT_VALUE)) {
-                                found = true;
-                            }
+                // Check for duplicate action names across all annotated methods
+                Set<String> actionNames = new HashSet<>();
+                for (List<Action> actions : actionAnnotationsByMethod.values()) {
+                    for (Action action : actions) {
+                        String actionName = action.value().equals(Action.DEFAULT_VALUE) ? defaultActionName : action.value();
+                        if (!actionNames.add(actionName)) {
+                            throw new ConfigurationException("The action class [" + actionClass +
+                                    "] contains two methods with an action name annotation whose value " +
+                                    "is the same (they both might be empty as well).");
                         }
-                    }
-
-                    // Build the default
-                    if (!found) {
-                        createActionConfig(defaultPackageConfig, actionClass, defaultActionName, DEFAULT_METHOD, null, allowedMethods);
                     }
                 }
 
+                if (shouldMapDefaultExecuteMethod(actionAnnotationsByMethod, hasDefaultMethod, actionAnnotation, actionsAnnotation)) {
+                    createActionConfig(defaultPackageConfig, actionClass, defaultActionName, DEFAULT_METHOD, null, allowedMethods);
+                }
+
                 // Build the actions for the annotations
-                for (Map.Entry<String, List<Action>> entry : map.entrySet()) {
+                for (Map.Entry<String, List<Action>> entry : actionAnnotationsByMethod.entrySet()) {
                     String method = entry.getKey();
                     List<Action> actions = entry.getValue();
                     for (Action action : actions) {
@@ -767,7 +775,7 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
 
                 // some actions will not have any @Action or a default method, like the rest actions
                 // where the action mapper is the one that finds the right method at runtime
-                if (map.isEmpty() && mapAllMatches && actionAnnotation == null && actionsAnnotation == null) {
+                if (actionAnnotationsByMethod.isEmpty() && mapAllMatches && actionAnnotation == null && actionsAnnotation == null) {
                     createActionConfig(defaultPackageConfig, actionClass, defaultActionName, null, actionAnnotation, allowedMethods);
                 }
 
@@ -816,6 +824,38 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
     protected boolean cannotInstantiate(Class<?> actionClass) {
         return actionClass.isAnnotation() || actionClass.isInterface() || actionClass.isEnum() ||
                 (actionClass.getModifiers() & Modifier.ABSTRACT) != 0 || actionClass.isAnonymousClass();
+    }
+
+    /**
+     * Determines whether the default {@code execute()} method should be automatically mapped as an action.
+     * This is the case when no explicit mapping exists for the default method, the class has an execute method,
+     * there are no class-level @Action/@Actions annotations, and no other method already maps to the default action name.
+     *
+     * @param actionAnnotationsByMethod the map of method names to their @Action annotations
+     * @param hasDefaultMethod          whether the action class has an execute() method
+     * @param classAction               the class-level @Action annotation, or null
+     * @param classActions              the class-level @Actions annotation, or null
+     * @return true if the default execute method should be mapped
+     */
+    protected boolean shouldMapDefaultExecuteMethod(Map<String, List<Action>> actionAnnotationsByMethod, boolean hasDefaultMethod,
+                                                    Action classAction, Actions classActions) {
+        if (actionAnnotationsByMethod.containsKey(DEFAULT_METHOD) || !hasDefaultMethod) {
+            return false;
+        }
+        if (classAction != null || classActions != null) {
+            return false;
+        }
+        if (!alwaysMapExecute && !actionAnnotationsByMethod.isEmpty()) {
+            return false;
+        }
+        for (List<Action> actions : actionAnnotationsByMethod.values()) {
+            for (Action action : actions) {
+                if (action.value().equals(Action.DEFAULT_VALUE)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -973,7 +1013,7 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
         String className = actionClass.getName();
         if (annotation != null) {
             actionName = annotation.value().equals(Action.DEFAULT_VALUE) ? actionName : annotation.value();
-            actionName = StringUtils.contains(actionName, "/") && !slashesInActionNames ? StringUtils.substringAfterLast(actionName, "/") : actionName;
+            actionName = Strings.CI.contains(actionName, "/") && !slashesInActionNames ? StringUtils.substringAfterLast(actionName, "/") : actionName;
             if (!Action.DEFAULT_VALUE.equals(annotation.className())) {
                 className = annotation.className();
             }
@@ -1060,7 +1100,7 @@ public class PackageBasedActionConfigBuilder implements ActionConfigBuilder {
         if (action != null && !action.value().equals(Action.DEFAULT_VALUE)) {
             LOG.trace("Using non-default action namespace from the Action annotation of [{}]", action.value());
             String actionName = action.value();
-            actionNamespace = StringUtils.contains(actionName, "/") ? StringUtils.substringBeforeLast(actionName, "/") : StringUtils.EMPTY;
+            actionNamespace = Strings.CI.contains(actionName, "/") ? StringUtils.substringBeforeLast(actionName, "/") : StringUtils.EMPTY;
         }
 
         // Next grab the parent annotation from the class

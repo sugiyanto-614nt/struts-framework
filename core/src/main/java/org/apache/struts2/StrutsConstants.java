@@ -256,9 +256,15 @@ public final class StrutsConstants {
     public static final String STRUTS_OBJECTFACTORY_SPRING_AUTOWIRE = "struts.objectFactory.spring.autoWire";
 
     /**
-     * Whether the autowire strategy chosen by STRUTS_OBJECTFACTORY_SPRING_AUTOWIRE is always respected.  Defaults
-     * to false, which is the legacy behavior that tries to determine the best strategy for the situation.
+     * Whether the autowire strategy chosen by STRUTS_OBJECTFACTORY_SPRING_AUTOWIRE is always respected.
+     * Defaults to true, which ensures the configured autowire strategy (AUTOWIRE_BY_NAME by default) is
+     * consistently used. This prevents issues where Spring's AUTOWIRE_CONSTRUCTOR strategy could inject
+     * unintended beans (e.g., String beans) into constructors.
+     * <p>
+     * Set to false to restore legacy behavior that mixes injection strategies, but be aware this can
+     * cause issues like WW-3647 where String beans are incorrectly injected into result class constructors.
      *
+     * @see <a href="https://issues.apache.org/jira/browse/WW-3647">WW-3647</a>
      * @since 2.1.3
      */
     public static final String STRUTS_OBJECTFACTORY_SPRING_AUTOWIRE_ALWAYS_RESPECT = "struts.objectFactory.spring.autoWire.alwaysRespect";
@@ -325,6 +331,37 @@ public final class StrutsConstants {
     public static final String STRUTS_ACTIONPROXYFACTORY = "struts.actionProxyFactory";
 
     public static final String STRUTS_FREEMARKER_WRAPPER_ALT_MAP = "struts.freemarker.wrapper.altMap";
+
+    /**
+     * Controls FreeMarker whitespace stripping during template compilation.
+     * When enabled (default), removes indentation and trailing whitespace from lines containing only FTL tags.
+     * Automatically disabled when devMode is enabled.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_FREEMARKER_WHITESPACE_STRIPPING = "struts.freemarker.whitespaceStripping";
+
+    /**
+     * Controls whether the compress tag is enabled globally.
+     * When disabled, the compress tag will not compress output regardless of other settings.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_COMPRESS_ENABLED = "struts.tag.compress.enabled";
+
+    /**
+     * Maximum size (in bytes) of body content that can be compressed. Content exceeding this limit will be skipped without compression.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_COMPRESS_MAX_SIZE = "struts.tag.compress.maxSize";
+
+    /**
+     * Maximum length of body content to include in log messages. Content longer than this will be truncated with length indicator.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_COMPRESS_LOG_MAX_LENGTH = "struts.tag.compress.log.maxLength";
 
     /**
      * Extension point for the Struts CompoundRootAccessor
@@ -486,6 +523,35 @@ public final class StrutsConstants {
     public static final String STRUTS_OGNL_EXPRESSION_CACHE_MAXSIZE = "struts.ognl.expressionCacheMaxSize";
 
     /**
+     * Specifies the type of cache to use for proxy detection. Valid values defined in
+     * {@link org.apache.struts2.ognl.OgnlCacheFactory.CacheType}.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_PROXY_CACHE_TYPE = "struts.proxy.cacheType";
+
+    /**
+     * Specifies the maximum cache size for proxy detection caches.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_PROXY_CACHE_MAXSIZE = "struts.proxy.cacheMaxSize";
+
+    /**
+     * The {@link org.apache.struts2.ognl.ProxyCacheFactory} implementation class.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_PROXY_CACHE_FACTORY = "struts.proxy.cacheFactory";
+
+    /**
+     * The {@link org.apache.struts2.util.ProxyService} implementation class.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_PROXYSERVICE = "struts.proxyService";
+
+    /**
      * Enables evaluation of OGNL expressions
      *
      * @since 6.0.0
@@ -531,6 +597,7 @@ public final class StrutsConstants {
     public static final String STRUTS_CONVERTER_ANNOTATION_PROCESSOR = "struts.converter.annotation.processor";
     public static final String STRUTS_CONVERTER_CREATOR = "struts.converter.creator";
     public static final String STRUTS_CONVERTER_HOLDER = "struts.converter.holder";
+    public static final String STRUTS_CONVERTER_USER_PROPERTIES_PROVIDER = "struts.converter.userPropertiesProvider";
 
     public static final String STRUTS_EXPRESSION_PARSER = "struts.expression.parser";
 
@@ -670,7 +737,24 @@ public final class StrutsConstants {
     public static final String STRUTS_UI_CHECKBOX_SUBMIT_UNCHECKED = "struts.ui.checkbox.submitUnchecked";
 
     /**
+     * The prefix used for hidden checkbox fields to track unchecked values.
+     * Default is "__checkbox_" for backward compatibility.
+     * Set to "struts_checkbox_" to avoid HTML validation warnings about double underscores.
+     *
+     * @since 7.2.0
+     */
+    public static final String STRUTS_UI_CHECKBOX_HIDDEN_PREFIX = "struts.ui.checkbox.hiddenPrefix";
+
+    /**
      * See {@link org.apache.struts2.interceptor.exec.ExecutorProvider}
      */
     public static final String STRUTS_EXECUTOR_PROVIDER = "struts.executor.provider";
+
+    /**
+     * See {@link org.apache.struts2.interceptor.csp.CspNonceReader}
+     *
+     * @since 6.8.0
+     */
+    public static final String STRUTS_CSP_NONCE_READER = "struts.csp.nonce.reader";
+    public static final String STRUTS_CSP_NONCE_SOURCE = "struts.csp.nonce.source";
 }

@@ -29,5 +29,6 @@ public class ExternalSecurityMemberAccessTest extends SecurityMemberAccessTest {
     @Override
     protected void assignNewSmaHelper() {
         sma = new ExternalSecurityMemberAccess(mockedProviderAllowlist, mockedThreadAllowlist);
+        sma.setProxyService(proxyService);
     }
 }
